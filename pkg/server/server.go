@@ -3,13 +3,13 @@ package server
 import (
 	"fmt"
 
+	"github.com/fil-forge/go-libstoracha/capabilities/access"
+	"github.com/fil-forge/go-libstoracha/capabilities/pdp/sign"
+	"github.com/fil-forge/go-ucanto/principal"
+	"github.com/fil-forge/go-ucanto/server"
+	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
+	"github.com/fil-forge/piri-signing-service/pkg/types"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/storacha/go-libstoracha/capabilities/access"
-	"github.com/storacha/go-libstoracha/capabilities/pdp/sign"
-	"github.com/storacha/go-ucanto/principal"
-	"github.com/storacha/go-ucanto/server"
-	"github.com/storacha/piri-signing-service/pkg/server/handlers"
-	"github.com/storacha/piri-signing-service/pkg/types"
 )
 
 var log = logging.Logger("pkg/server")

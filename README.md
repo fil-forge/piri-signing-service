@@ -16,13 +16,13 @@ The Piri Signing Service acts as a secure bridge between Storacha's cold wallet 
 ### 1. Install the Service
 
 ```bash
-go install github.com/storacha/piri-signing-service@latest
+go install github.com/fil-forge/piri-signing-service@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/storacha/piri-signing-service.git
+git clone https://github.com/fil-forge/piri-signing-service.git
 cd piri-signing-service
 go build -o signing-service
 ```
@@ -258,7 +258,7 @@ docker run -d \
   -v /secure/path/to/config:/root/signer.yaml:ro \
   -v /secure/path/to/keys:/keys:ro \
   --name signing-service \
-  storacha/piri-signing-service
+  fil-forge/piri-signing-service
 ```
 
 ## Monitoring
@@ -329,7 +329,7 @@ GOOS=windows GOARCH=amd64 go build -o signing-service.exe
 ## Support
 
 For issues, feature requests, or questions:
-- GitHub Issues: https://github.com/storacha/piri-signing-service/issues
+- GitHub Issues: https://github.com/fil-forge/piri-signing-service/issues
 - Documentation: https://docs.storacha.com/signing-service
 
 ## License

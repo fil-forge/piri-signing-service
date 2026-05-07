@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/storacha/filecoin-services/go/eip712"
+	"github.com/fil-forge/filecoin-services/go/eip712"
 )
 
 type Signer struct {
