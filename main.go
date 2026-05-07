@@ -11,18 +11,18 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fil-forge/go-ucanto/principal"
+	ucan_http "github.com/fil-forge/go-ucanto/transport/http"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/storacha/go-ucanto/principal"
-	ucan_http "github.com/storacha/go-ucanto/transport/http"
 
-	"github.com/storacha/piri-signing-service/pkg/config"
-	"github.com/storacha/piri-signing-service/pkg/handlers"
-	"github.com/storacha/piri-signing-service/pkg/server"
-	"github.com/storacha/piri-signing-service/pkg/signer"
+	"github.com/fil-forge/piri-signing-service/pkg/config"
+	"github.com/fil-forge/piri-signing-service/pkg/handlers"
+	"github.com/fil-forge/piri-signing-service/pkg/server"
+	"github.com/fil-forge/piri-signing-service/pkg/signer"
 )
 
 var rootCmd = &cobra.Command{

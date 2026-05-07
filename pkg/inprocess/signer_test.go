@@ -8,10 +8,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/storacha/filecoin-services/go/eip712"
-	"github.com/storacha/go-libstoracha/testutil"
-	"github.com/storacha/piri-signing-service/pkg/signer"
-	"github.com/storacha/piri-signing-service/pkg/types"
+	"github.com/fil-forge/filecoin-services/go/eip712"
+	"github.com/fil-forge/go-libstoracha/testutil"
+	"github.com/fil-forge/piri-signing-service/pkg/signer"
+	"github.com/fil-forge/piri-signing-service/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
