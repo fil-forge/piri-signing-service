@@ -6,10 +6,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
-	"github.com/fil-forge/go-ucanto/core/message"
-	"github.com/fil-forge/go-ucanto/ucan"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/container"
+	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/ipfs/go-cid"
+
 	"github.com/fil-forge/piri-signing-service/pkg/signer"
 	"github.com/fil-forge/piri-signing-service/pkg/types"
 )
@@ -29,43 +30,46 @@ func New(signer *signer.Signer) *Signer {
 	return &Signer{signer: signer}
 }
 
-// SignCreateDataSet signs a CreateDataSet operation directly
-func (s *Signer) SignCreateDataSet(ctx context.Context,
-	issuer ucan.Signer,
+// SignCreateDataSet signs a CreateDataSet operation directly.
+//
+// The issuer/options parameters are part of the SigningService contract for
+// the remote-mode client but are unused in the inprocess implementation,
+// which signs synchronously without UCAN authorization.
+func (s *Signer) SignCreateDataSet(_ context.Context,
+	_ ucan.Signer,
 	clientDataSetId *big.Int,
 	payee common.Address,
 	metadata []eip712.MetadataEntry,
-	options ...delegation.Option) (*eip712.AuthSignature, error) {
-	// Context is accepted but not used since signing is synchronous
+	_ ...invocation.Option) (*eip712.AuthSignature, error) {
 	return s.signer.SignCreateDataSet(clientDataSetId, payee, metadata)
 }
 
-// SignAddPieces signs an AddPieces operation directly
-func (s *Signer) SignAddPieces(ctx context.Context,
-	issuer ucan.Signer,
+// SignAddPieces signs an AddPieces operation directly.
+func (s *Signer) SignAddPieces(_ context.Context,
+	_ ucan.Signer,
 	clientDataSetId *big.Int,
 	nonce *big.Int,
 	pieceData [][]byte,
 	metadata [][]eip712.MetadataEntry,
-	proofs [][]ipld.Link,
-	proofData [][]message.AgentMessage,
-	options ...delegation.Option) (*eip712.AuthSignature, error) {
+	_ [][]cid.Cid,
+	_ []*container.Container,
+	_ ...invocation.Option) (*eip712.AuthSignature, error) {
 	return s.signer.SignAddPieces(clientDataSetId, nonce, pieceData, metadata)
 }
 
-// SignSchedulePieceRemovals signs a SchedulePieceRemovals operation directly
-func (s *Signer) SignSchedulePieceRemovals(ctx context.Context,
-	issuer ucan.Signer,
+// SignSchedulePieceRemovals signs a SchedulePieceRemovals operation directly.
+func (s *Signer) SignSchedulePieceRemovals(_ context.Context,
+	_ ucan.Signer,
 	clientDataSetId *big.Int,
 	pieceIds []*big.Int,
-	options ...delegation.Option) (*eip712.AuthSignature, error) {
+	_ ...invocation.Option) (*eip712.AuthSignature, error) {
 	return s.signer.SignSchedulePieceRemovals(clientDataSetId, pieceIds)
 }
 
-// SignDeleteDataSet signs a DeleteDataSet operation directly
-func (s *Signer) SignDeleteDataSet(ctx context.Context,
-	issuer ucan.Signer,
+// SignDeleteDataSet signs a DeleteDataSet operation directly.
+func (s *Signer) SignDeleteDataSet(_ context.Context,
+	_ ucan.Signer,
 	clientDataSetId *big.Int,
-	options ...delegation.Option) (*eip712.AuthSignature, error) {
+	_ ...invocation.Option) (*eip712.AuthSignature, error) {
 	return s.signer.SignDeleteDataSet(clientDataSetId)
 }

@@ -1,52 +1,62 @@
+// Package server hosts the UCAN-facing HTTP server for piri-signing-service.
+//
+// The server exposes the four /pdp/sign/* capabilities — DataSetCreate,
+// DataSetDelete, PiecesAdd, PiecesRemoveSchedule — backed by an in-process
+// eip712 OperationSigner. Authorization is currently delegated to the UCAN
+// validator's standard proof-chain checks; per-operation policies (e.g.
+// authorized-operator only) can be layered on top via principal-resolution
+// hooks.
 package server
 
 import (
-	"fmt"
+	"net/http"
 
-	"github.com/fil-forge/go-libstoracha/capabilities/access"
-	"github.com/fil-forge/go-libstoracha/capabilities/pdp/sign"
-	"github.com/fil-forge/go-ucanto/principal"
-	"github.com/fil-forge/go-ucanto/server"
+	signcaps "github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/ucantone/principal"
+	ucanserver "github.com/fil-forge/ucantone/server"
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
 	"github.com/fil-forge/piri-signing-service/pkg/types"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("pkg/server")
 
-func New(id principal.Signer, signer types.OperationSigner) (server.ServerView[server.Service], error) {
-	options := []server.Option{
-		server.WithServiceMethod(
-			access.GrantAbility,
-			server.Provide(access.Grant, handlers.NewAccessGrantHandler(id)),
-		),
-		server.WithServiceMethod(
-			sign.DataSetCreateAbility,
-			server.Provide(sign.DataSetCreate, handlers.NewDataSetCreateHandler(id, signer)),
-		),
-		server.WithServiceMethod(
-			sign.DataSetDeleteAbility,
-			server.Provide(sign.DataSetDelete, handlers.NewDataSetDeleteHandler(id, signer)),
-		),
-		server.WithServiceMethod(
-			sign.PiecesAddAbility,
-			server.Provide(sign.PiecesAdd, handlers.NewPiecesAddHandler(id, signer)),
-		),
-		server.WithServiceMethod(
-			sign.PiecesRemoveScheduleAbility,
-			server.Provide(sign.PiecesRemoveSchedule, handlers.NewPiecesRemoveScheduleHandler(id, signer)),
-		),
-		server.WithErrorHandler(func(err server.HandlerExecutionError[any]) {
-			l := log.With("error", err.Error())
-			if s := err.Stack(); s != "" {
-				l.With("stack", s)
-			}
-			l.Error("ucan handler execution error")
-		}),
-	}
-	server, err := server.NewServer(id, options...)
-	if err != nil {
-		return nil, fmt.Errorf("creating server: %w", err)
-	}
-	return server, nil
+// Server wraps a *ucanserver.HTTPServer with the /pdp/sign/* handlers
+// pre-registered.
+type Server struct {
+	srv *ucanserver.HTTPServer
+}
+
+// New constructs a UCAN server with the four /pdp/sign/* handlers bound
+// to `signer`. `id` is the service identity used to sign emitted receipts.
+func New(id principal.Signer, signer types.OperationSigner) (*Server, error) {
+	h := handlers.New(signer)
+	srv := ucanserver.NewHTTP(id)
+	srv.Handle(signcaps.DataSetCreate, h.DataSetCreate())
+	srv.Handle(signcaps.DataSetDelete, h.DataSetDelete())
+	srv.Handle(signcaps.PiecesAdd, h.PiecesAdd())
+	srv.Handle(signcaps.PiecesRemoveSchedule, h.PiecesRemoveSchedule())
+	log.Infow("piri-signing-service UCAN server initialized",
+		"id", id.DID(),
+		"commands", []string{
+			signcaps.DataSetCreateCommand,
+			signcaps.DataSetDeleteCommand,
+			signcaps.PiecesAddCommand,
+			signcaps.PiecesRemoveScheduleCommand,
+		},
+	)
+	return &Server{srv: srv}, nil
+}
+
+// ServeHTTP forwards to the underlying ucantone HTTP server. Lets `*Server`
+// drop into any net/http or echo route directly.
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.srv.ServeHTTP(w, r)
+}
+
+// HTTPServer returns the underlying ucantone server for callers that need
+// to register additional handlers or options.
+func (s *Server) HTTPServer() *ucanserver.HTTPServer {
+	return s.srv
 }

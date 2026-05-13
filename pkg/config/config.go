@@ -15,10 +15,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	ucantodid "github.com/fil-forge/go-ucanto/did"
-	"github.com/fil-forge/go-ucanto/principal"
-	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
-	"github.com/fil-forge/go-ucanto/principal/signer"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/principal"
+	"github.com/fil-forge/ucantone/principal/ed25519"
+	"github.com/fil-forge/ucantone/principal/signer"
 	"github.com/spf13/viper"
 )
 
@@ -149,13 +149,13 @@ func (c *Config) ContractAddr() common.Address {
 
 // LoadServiceIdentity loads a multibase-encoded service key string
 // and wraps it in a signer along a DID
-func LoadServiceIdentity(key string, did string) (principal.Signer, error) {
+func LoadServiceIdentity(key string, didStr string) (principal.Signer, error) {
 	k, err := ed25519.Parse(key)
 	if err != nil {
 		return nil, fmt.Errorf("parsing service key: %w", err)
 	}
 
-	d, err := ucantodid.Parse(did)
+	d, err := did.Parse(didStr)
 	if err != nil {
 		return nil, fmt.Errorf("parsing service DID: %w", err)
 	}
@@ -170,13 +170,13 @@ func LoadServiceIdentity(key string, did string) (principal.Signer, error) {
 
 // LoadServiceIdentityFromFile loads an Ed25519 private key from a PKCS#8 PEM file
 // and wraps it in a signer along a DID
-func LoadServiceIdentityFromFile(keyFilePath string, did string) (principal.Signer, error) {
+func LoadServiceIdentityFromFile(keyFilePath string, didStr string) (principal.Signer, error) {
 	k, err := SignerFromEd25519PEMFile(keyFilePath)
 	if err != nil {
 		return nil, fmt.Errorf("loading service key from PEM file: %w", err)
 	}
 
-	d, err := ucantodid.Parse(did)
+	d, err := did.Parse(didStr)
 	if err != nil {
 		return nil, fmt.Errorf("parsing service DID: %w", err)
 	}
@@ -230,7 +230,7 @@ func SignerFromEd25519PEMFile(path string) (principal.Signer, error) {
 		return nil, fmt.Errorf("no PRIVATE KEY block found in PEM file")
 	}
 
-	return ed25519.FromRaw(*privateKey)
+	return ed25519.FromRaw((*privateKey).Seed())
 }
 
 // LoadSigningKey loads a signing key from a string

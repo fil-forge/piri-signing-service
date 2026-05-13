@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/fil-forge/go-ucanto/principal"
-	ucan_http "github.com/fil-forge/go-ucanto/transport/http"
+	"github.com/fil-forge/ucantone/principal"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -154,27 +153,16 @@ func run(cmd *cobra.Command, args []string) error {
 	// Create HTTP handlers
 	handler := handlers.NewHandler(s)
 
-	// Create UCAN server
-	server, err := server.New(id, s)
+	// Create UCAN server (currently stubbed pending UCAN 1.0 migration).
+	ucanServer, err := server.New(id, s)
 	if err != nil {
 		return fmt.Errorf("creating UCAN server: %w", err)
 	}
 
-	// Setup routes
-	e.POST("/", func(ctx echo.Context) error {
-		r := ctx.Request()
-		res, err := server.Request(r.Context(), ucan_http.NewRequest(r.Body, r.Header))
-		if err != nil {
-			return fmt.Errorf("handling UCAN request: %w", err)
-		}
-		for key, vals := range res.Headers() {
-			for _, v := range vals {
-				ctx.Response().Header().Add(key, v)
-			}
-		}
-		// content type is empty as it will have been set by ucanto transport codec
-		return ctx.Stream(res.Status(), "", res.Body())
-	})
+	// Setup routes. The UCAN endpoint is stubbed (responds 501 NotImplemented)
+	// until the libforge pdp/sign capability port lands. The REST endpoints
+	// below remain fully functional.
+	e.POST("/", echo.WrapHandler(ucanServer))
 	e.GET("/healthcheck", handler.Health)
 	// TODO: remove /sign/* routes after all nodes transition to UCAN invocations
 	e.POST("/sign/create-dataset", handler.SignCreateDataSet)

@@ -6,10 +6,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
-	"github.com/fil-forge/go-ucanto/core/message"
-	"github.com/fil-forge/go-ucanto/ucan"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/container"
+	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/ipfs/go-cid"
 )
 
 // CreateDataSetRequest represents the request payload for creating a dataset
@@ -46,8 +46,8 @@ type HealthResponse struct {
 
 // SigningService defines the interface for authorized PDP operation signing.
 // This can be implemented by:
-// - UCAN client (remote signing service)
-// - In-process signer (for testing/dev)
+//   - UCAN client (remote signing service)
+//   - In-process signer (for testing/dev)
 //
 // This allows piri nodes to use either implementation interchangeably,
 // enabling easy testing and development without running a separate service.
@@ -59,10 +59,12 @@ type SigningService interface {
 		dataSet *big.Int,
 		payee common.Address,
 		metadata []eip712.MetadataEntry,
-		options ...delegation.Option,
+		options ...invocation.Option,
 	) (*eip712.AuthSignature, error)
 
-	// SignAddPieces signs an AddPieces operation
+	// SignAddPieces signs an AddPieces operation. `proofs` references prior
+	// `blob/accept` task CIDs; `proofBundle` carries the invocation/receipt
+	// container for the proof chain.
 	SignAddPieces(
 		ctx context.Context,
 		issuer ucan.Signer,
@@ -70,9 +72,9 @@ type SigningService interface {
 		nonce *big.Int,
 		pieceData [][]byte,
 		metadata [][]eip712.MetadataEntry,
-		proofs [][]ipld.Link, // links to `blob/accept` tasks
-		proofData [][]message.AgentMessage, // invocations and receipts for the proof chain
-		options ...delegation.Option,
+		proofs [][]cid.Cid,
+		proofBundle []*container.Container,
+		options ...invocation.Option,
 	) (*eip712.AuthSignature, error)
 
 	// SignSchedulePieceRemovals signs a SchedulePieceRemovals operation
@@ -81,7 +83,7 @@ type SigningService interface {
 		issuer ucan.Signer,
 		dataSet *big.Int,
 		pieceIds []*big.Int,
-		options ...delegation.Option,
+		options ...invocation.Option,
 	) (*eip712.AuthSignature, error)
 
 	// SignDeleteDataSet signs a DeleteDataSet operation
@@ -89,7 +91,7 @@ type SigningService interface {
 		ctx context.Context,
 		issuer ucan.Signer,
 		dataSet *big.Int,
-		options ...delegation.Option,
+		options ...invocation.Option,
 	) (*eip712.AuthSignature, error)
 }
 
