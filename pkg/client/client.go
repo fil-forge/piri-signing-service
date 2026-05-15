@@ -21,6 +21,7 @@ import (
 	"math/big"
 	"net/url"
 
+	"github.com/fil-forge/ucantone/did"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
 	signcaps "github.com/fil-forge/libforge/capabilities/pdp/sign"
@@ -37,8 +38,8 @@ import (
 // Client invokes the four /pdp/sign/* capabilities against a remote
 // piri-signing-service.
 type Client struct {
-	serviceID   ucan.Principal
-	httpClient  *ucanclient.HTTPClient
+	serviceID   did.DID
+	executor    execution.Executor
 	defaultOpts []invocation.Option
 }
 
@@ -71,7 +72,7 @@ func WithInvocationOptions(opts ...invocation.Option) Option {
 
 // New constructs a Client targeting `serviceURL`. `serviceID` is the
 // signing service's DID — used as the invocation audience.
-func New(serviceID ucan.Principal, serviceURL string, options ...Option) (*Client, error) {
+func New(serviceID did.DID, serviceURL string, options ...Option) (*Client, error) {
 	endpoint, err := url.Parse(serviceURL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing signing service URL: %w", err)
@@ -90,10 +91,14 @@ func New(serviceID ucan.Principal, serviceURL string, options ...Option) (*Clien
 // NewFromHTTPClient constructs a Client from a pre-built ucantone
 // HTTPClient. Useful when the transport has already been assembled (e.g.
 // by a config layer that bundled DID + HTTPClient together).
-func NewFromHTTPClient(serviceID ucan.Principal, httpC *ucanclient.HTTPClient, defaultOpts ...invocation.Option) *Client {
+func NewFromHTTPClient(
+	serviceID did.DID, 
+	executor execution.Executor, 
+	defaultOpts ...invocation.Option,
+	) *Client {
 	return &Client{
 		serviceID:   serviceID,
-		httpClient:  httpC,
+		executor:  executor,
 		defaultOpts: defaultOpts,
 	}
 }
@@ -221,7 +226,7 @@ func (c *Client) exec(ctx context.Context, inv *invocation.Invocation, proofBund
 		)
 	}
 	req := execution.NewRequest(ctx, inv, reqOpts...)
-	resp, err := c.httpClient.Execute(req)
+	resp, err := c.executor.Execute(req)
 	if err != nil {
 		return nil, fmt.Errorf("executing %s: %w", inv.Command(), err)
 	}
