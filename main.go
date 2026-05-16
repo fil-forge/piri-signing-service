@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/fil-forge/go-ucanto/principal"
-	ucan_http "github.com/fil-forge/go-ucanto/transport/http"
+	"github.com/fil-forge/ucantone/principal"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -154,27 +153,11 @@ func run(cmd *cobra.Command, args []string) error {
 	// Create HTTP handlers
 	handler := handlers.NewHandler(s)
 
-	// Create UCAN server
-	server, err := server.New(id, s)
-	if err != nil {
-		return fmt.Errorf("creating UCAN server: %w", err)
-	}
+	// Create UCAN server (UCAN 1.0 via ucantone + libforge)
+	ucanSrv := server.New(id, s)
 
-	// Setup routes
-	e.POST("/", func(ctx echo.Context) error {
-		r := ctx.Request()
-		res, err := server.Request(r.Context(), ucan_http.NewRequest(r.Body, r.Header))
-		if err != nil {
-			return fmt.Errorf("handling UCAN request: %w", err)
-		}
-		for key, vals := range res.Headers() {
-			for _, v := range vals {
-				ctx.Response().Header().Add(key, v)
-			}
-		}
-		// content type is empty as it will have been set by ucanto transport codec
-		return ctx.Stream(res.Status(), "", res.Body())
-	})
+	// Setup routes — the ucantone server is an http.Handler, route POST / to it.
+	e.POST("/", echo.WrapHandler(ucanSrv))
 	e.GET("/healthcheck", handler.Health)
 	// TODO: remove /sign/* routes after all nodes transition to UCAN invocations
 	e.POST("/sign/create-dataset", handler.SignCreateDataSet)

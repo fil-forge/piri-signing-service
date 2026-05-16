@@ -1,29 +1,24 @@
 package handlers_test
 
 import (
+	"bytes"
 	"encoding/hex"
 	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/fil-forge/go-libstoracha/capabilities/pdp/sign"
-	"github.com/fil-forge/go-libstoracha/testutil"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/result"
-	"github.com/fil-forge/go-ucanto/ucan"
-	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
-	"github.com/fil-forge/piri-signing-service/pkg/signer"
-	logging "github.com/ipfs/go-log/v2"
+	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/ucantone/execution/bindexec"
+	"github.com/fil-forge/ucantone/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
+	"github.com/fil-forge/piri-signing-service/pkg/signer"
 )
 
-func init() {
-	logging.SetDebugLogging()
-}
-
-// createTestSigner creates a test signer with a random key
+// createTestSigner creates a test eip712 signer with a random key.
 func createTestSigner(t *testing.T) *signer.Signer {
 	privateKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
@@ -35,271 +30,238 @@ func createTestSigner(t *testing.T) *signer.Signer {
 }
 
 func TestSignCreateDataSet_Success(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	s := createTestSigner(t)
 	handler := handlers.NewDataSetCreateHandler(service, s)
 
-	// Use a valid checksummed address
 	testPayee := common.HexToAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
 
-	prf := delegation.FromDelegation(
-		testutil.Must(
-			delegation.Delegate(
-				service,
-				alice,
-				[]ucan.Capability[ucan.NoCaveats]{
-					ucan.NewCapability("pdp/sign/*", service.DID().String(), ucan.NoCaveats{}),
-				},
-			),
-		)(t),
-	)
-
-	nb := sign.DataSetCreateCaveats{
+	args := &sign.DataSetCreateArguments{
 		DataSet: big.NewInt(123),
-		Payee:   testPayee,
+		Payee:   testPayee.Bytes(),
 		Metadata: sign.Metadata{
 			Keys:   []string{"name", "version"},
 			Values: map[string]string{"name": "test-dataset", "version": "1.0"},
 		},
 	}
-	cap := ucan.NewCapability(sign.DataSetCreateAbility, service.DID().String(), nb)
-	inv, err := sign.DataSetCreate.Invoke(alice, service, service.DID().String(), nb, delegation.WithProof(prf))
+	inv, err := sign.DataSetCreate.Invoke(alice, service.DID(), args)
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*sign.DataSetCreateOK](inv.Task().Link(), bindexec.WithSigner[*sign.DataSetCreateOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Nil(t, x)
-	assertSignature(t, s.GetAddress(), o)
+	require.NoError(t, handler(req, res))
+	okBytes, errBytes := res.Receipt().Out().Unpack()
+	require.Nil(t, errBytes)
+	require.NotNil(t, okBytes)
+
+	var got sign.AuthSignature
+	require.NoError(t, got.UnmarshalCBOR(bytes.NewReader(okBytes)))
+	assertSignature(t, s.GetAddress(), got)
 }
 
 func TestSignCreateDataSet_InvalidResource(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	s := createTestSigner(t)
 	handler := handlers.NewDataSetCreateHandler(service, s)
 
-	// Use a valid checksummed address
 	testPayee := common.HexToAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
 
-	nb := sign.DataSetCreateCaveats{
+	args := &sign.DataSetCreateArguments{
 		DataSet: big.NewInt(123),
-		Payee:   testPayee,
+		Payee:   testPayee.Bytes(),
 		Metadata: sign.Metadata{
 			Keys:   []string{"name", "version"},
 			Values: map[string]string{"name": "test-dataset", "version": "1.0"},
 		},
 	}
-	// alice should not be able to self sign
-	cap := ucan.NewCapability(sign.DataSetCreateAbility, alice.DID().String(), nb)
-	inv, err := sign.DataSetCreate.Invoke(alice, service, alice.DID().String(), nb)
+	// invoke with alice's DID as the subject (instead of the service DID)
+	inv, err := sign.DataSetCreate.Invoke(alice, alice.DID(), args)
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*sign.DataSetCreateOK](inv.Task().Link(), bindexec.WithSigner[*sign.DataSetCreateOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Empty(t, o)
-	require.Equal(t, sign.InvalidResourceErrorName, x.Name())
+	require.NoError(t, handler(req, res))
+	require.False(t, res.Receipt().Out().IsOK())
 }
 
 func TestSignDeleteDataSet_Success(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	s := createTestSigner(t)
 	handler := handlers.NewDataSetDeleteHandler(service, s)
 
-	prf := delegation.FromDelegation(
-		testutil.Must(
-			delegation.Delegate(
-				service,
-				alice,
-				[]ucan.Capability[ucan.NoCaveats]{
-					ucan.NewCapability("pdp/sign/*", service.DID().String(), ucan.NoCaveats{}),
-				},
-			),
-		)(t),
-	)
-
-	nb := sign.DataSetDeleteCaveats{
-		DataSet: big.NewInt(123),
-	}
-	cap := ucan.NewCapability(sign.DataSetDeleteAbility, service.DID().String(), nb)
-	inv, err := sign.DataSetDelete.Invoke(alice, service, service.DID().String(), nb, delegation.WithProof(prf))
+	args := &sign.DataSetDeleteArguments{DataSet: big.NewInt(123)}
+	inv, err := sign.DataSetDelete.Invoke(alice, service.DID(), args)
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*sign.DataSetDeleteOK](inv.Task().Link(), bindexec.WithSigner[*sign.DataSetDeleteOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Nil(t, x)
-	assertSignature(t, s.GetAddress(), o)
+	require.NoError(t, handler(req, res))
+	okBytes, errBytes := res.Receipt().Out().Unpack()
+	require.Nil(t, errBytes)
+	require.NotNil(t, okBytes)
+
+	var got sign.AuthSignature
+	require.NoError(t, got.UnmarshalCBOR(bytes.NewReader(okBytes)))
+	assertSignature(t, s.GetAddress(), got)
 }
 
 func TestSignDeleteDataSet_InvalidResource(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	s := createTestSigner(t)
 	handler := handlers.NewDataSetDeleteHandler(service, s)
 
-	nb := sign.DataSetDeleteCaveats{
-		DataSet: big.NewInt(123),
-	}
-	// alice should not be able to self sign
-	cap := ucan.NewCapability(sign.DataSetDeleteAbility, alice.DID().String(), nb)
-	inv, err := sign.DataSetDelete.Invoke(alice, service, alice.DID().String(), nb)
+	args := &sign.DataSetDeleteArguments{DataSet: big.NewInt(123)}
+	inv, err := sign.DataSetDelete.Invoke(alice, alice.DID(), args)
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*sign.DataSetDeleteOK](inv.Task().Link(), bindexec.WithSigner[*sign.DataSetDeleteOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Empty(t, o)
-	require.Equal(t, sign.InvalidResourceErrorName, x.Name())
+	require.NoError(t, handler(req, res))
+	require.False(t, res.Receipt().Out().IsOK())
 }
 
 func TestSignAddPieces_Success(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	s := createTestSigner(t)
 	handler := handlers.NewPiecesAddHandler(service, s)
 
-	prf := delegation.FromDelegation(
-		testutil.Must(
-			delegation.Delegate(
-				service,
-				alice,
-				[]ucan.Capability[ucan.NoCaveats]{
-					ucan.NewCapability("pdp/sign/*", service.DID().String(), ucan.NoCaveats{}),
-				},
-			),
-		)(t),
-	)
-
-	nb := sign.PiecesAddCaveats{
+	args := &sign.PiecesAddArguments{
 		DataSet: big.NewInt(123),
 		Nonce:   big.NewInt(0),
 		PieceData: [][]byte{
-			testutil.Must(hex.DecodeString("0001020304"))(t),
-			testutil.Must(hex.DecodeString("0506070809"))(t),
+			mustHex(t, "0001020304"),
+			mustHex(t, "0506070809"),
 		},
 		Metadata: []sign.Metadata{
 			{Keys: []string{"size"}, Values: map[string]string{"size": "1024"}},
 			{Keys: []string{"size"}, Values: map[string]string{"size": "2048"}},
 		},
 	}
-	cap := ucan.NewCapability(sign.PiecesAddAbility, service.DID().String(), nb)
-	inv, err := sign.PiecesAdd.Invoke(alice, service, service.DID().String(), nb, delegation.WithProof(prf))
+	inv, err := sign.PiecesAdd.Invoke(alice, service.DID(), args)
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*sign.PiecesAddOK](inv.Task().Link(), bindexec.WithSigner[*sign.PiecesAddOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Nil(t, x)
-	assertSignature(t, s.GetAddress(), o)
+	require.NoError(t, handler(req, res))
+	okBytes, errBytes := res.Receipt().Out().Unpack()
+	require.Nil(t, errBytes)
+	require.NotNil(t, okBytes)
+
+	var got sign.AuthSignature
+	require.NoError(t, got.UnmarshalCBOR(bytes.NewReader(okBytes)))
+	assertSignature(t, s.GetAddress(), got)
 }
 
 func TestSignAddPieces_InvalidResource(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	s := createTestSigner(t)
-	handler := handlers.NewDataSetDeleteHandler(service, s)
+	handler := handlers.NewPiecesAddHandler(service, s)
 
-	nb := sign.DataSetDeleteCaveats{
+	args := &sign.PiecesAddArguments{
 		DataSet: big.NewInt(123),
+		Nonce:   big.NewInt(0),
 	}
-	// alice should not be able to self sign
-	cap := ucan.NewCapability(sign.DataSetDeleteAbility, alice.DID().String(), nb)
-	inv, err := sign.DataSetDelete.Invoke(alice, service, alice.DID().String(), nb)
+	inv, err := sign.PiecesAdd.Invoke(alice, alice.DID(), args)
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*sign.PiecesAddOK](inv.Task().Link(), bindexec.WithSigner[*sign.PiecesAddOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Empty(t, o)
-	require.Equal(t, sign.InvalidResourceErrorName, x.Name())
+	require.NoError(t, handler(req, res))
+	require.False(t, res.Receipt().Out().IsOK())
 }
 
 func TestSignScheduleRemovePieces_Success(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	s := createTestSigner(t)
 	handler := handlers.NewPiecesRemoveScheduleHandler(service, s)
 
-	prf := delegation.FromDelegation(
-		testutil.Must(
-			delegation.Delegate(
-				service,
-				alice,
-				[]ucan.Capability[ucan.NoCaveats]{
-					ucan.NewCapability("pdp/sign/*", service.DID().String(), ucan.NoCaveats{}),
-				},
-			),
-		)(t),
-	)
-
-	nb := sign.PiecesRemoveScheduleCaveats{
+	args := &sign.PiecesRemoveScheduleArguments{
 		DataSet: big.NewInt(123),
 		Pieces:  []*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3)},
 	}
-	cap := ucan.NewCapability(sign.PiecesRemoveScheduleAbility, service.DID().String(), nb)
-	inv, err := sign.PiecesRemoveSchedule.Invoke(alice, service, service.DID().String(), nb, delegation.WithProof(prf))
+	inv, err := sign.PiecesRemoveSchedule.Invoke(alice, service.DID(), args)
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*sign.PiecesRemoveScheduleOK](inv.Task().Link(), bindexec.WithSigner[*sign.PiecesRemoveScheduleOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Nil(t, x)
-	assertSignature(t, s.GetAddress(), o)
+	require.NoError(t, handler(req, res))
+	okBytes, errBytes := res.Receipt().Out().Unpack()
+	require.Nil(t, errBytes)
+	require.NotNil(t, okBytes)
+
+	var got sign.AuthSignature
+	require.NoError(t, got.UnmarshalCBOR(bytes.NewReader(okBytes)))
+	assertSignature(t, s.GetAddress(), got)
 }
 
 func TestSignScheduleRemovePieces_InvalidResource(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	s := createTestSigner(t)
 	handler := handlers.NewPiecesRemoveScheduleHandler(service, s)
 
-	nb := sign.PiecesRemoveScheduleCaveats{
+	args := &sign.PiecesRemoveScheduleArguments{
 		DataSet: big.NewInt(123),
 		Pieces:  []*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3)},
 	}
-	// alice should not be able to self sign
-	cap := ucan.NewCapability(sign.PiecesRemoveScheduleAbility, alice.DID().String(), nb)
-	inv, err := sign.PiecesRemoveSchedule.Invoke(alice, service, alice.DID().String(), nb)
+	inv, err := sign.PiecesRemoveSchedule.Invoke(alice, alice.DID(), args)
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*sign.PiecesRemoveScheduleOK](inv.Task().Link(), bindexec.WithSigner[*sign.PiecesRemoveScheduleOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Empty(t, o)
-	require.Equal(t, sign.InvalidResourceErrorName, x.Name())
+	require.NoError(t, handler(req, res))
+	require.False(t, res.Receipt().Out().IsOK())
 }
 
 func assertSignature(t *testing.T, signerAddr common.Address, sig sign.AuthSignature) {
 	assert.NotEmpty(t, sig.Signature)
-	assert.Equal(t, signerAddr, sig.Signer)
+	require.Len(t, sig.Signer, len(common.Address{}))
+	assert.Equal(t, signerAddr, common.BytesToAddress(sig.Signer))
 	assert.NotEmpty(t, sig.SignedData)
 	assert.True(t, sig.V == 27 || sig.V == 28, "V should be 27 or 28")
+}
+
+func mustHex(t *testing.T, s string) []byte {
+	b, err := hex.DecodeString(s)
+	require.NoError(t, err)
+	return b
 }

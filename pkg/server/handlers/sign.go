@@ -1,18 +1,14 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/go-libstoracha/capabilities/pdp/sign"
-	"github.com/fil-forge/go-ucanto/core/invocation"
-	"github.com/fil-forge/go-ucanto/core/receipt/fx"
-	"github.com/fil-forge/go-ucanto/core/result"
-	"github.com/fil-forge/go-ucanto/core/result/failure"
-	"github.com/fil-forge/go-ucanto/principal"
-	"github.com/fil-forge/go-ucanto/server"
-	"github.com/fil-forge/go-ucanto/ucan"
+	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/ucantone/errors"
+	"github.com/fil-forge/ucantone/execution/bindexec"
+	"github.com/fil-forge/ucantone/ucan"
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/fil-forge/piri-signing-service/pkg/types"
@@ -20,137 +16,139 @@ import (
 
 var log = logging.Logger("pkg/server/handlers")
 
-func NewDataSetCreateHandler(id principal.Signer, signer types.OperationSigner) server.HandlerFunc[sign.DataSetCreateCaveats, sign.DataSetCreateOk, failure.IPLDBuilderFailure] {
-	return func(
-		ctx context.Context,
-		capability ucan.Capability[sign.DataSetCreateCaveats],
-		invocation invocation.Invocation,
-		context server.InvocationContext,
-	) (result.Result[sign.DataSetCreateOk, failure.IPLDBuilderFailure], fx.Effects, error) {
-		nb := capability.Nb()
+// InvalidResourceErrorName is the receipt failure name returned when an
+// invocation's subject does not match the service DID.
+const InvalidResourceErrorName = "InvalidResource"
+
+func newInvalidResourceError(expected, actual string) error {
+	return errors.New(InvalidResourceErrorName,
+		"invalid resource, expected: %s got: %s", expected, actual)
+}
+
+// NewDataSetCreateHandler wraps the underlying eip712 signer in a
+// bindexec UCAN handler for /pdp/sign/dataset/create.
+func NewDataSetCreateHandler(id ucan.Signer, signer types.OperationSigner) bindexec.HandlerFunc[*sign.DataSetCreateArguments, *sign.DataSetCreateOK] {
+	return func(req *bindexec.Request[*sign.DataSetCreateArguments], res *bindexec.Response[*sign.DataSetCreateOK]) error {
+		args := req.Task().Arguments()
+		inv := req.Invocation()
 		log.Infow(
 			"handling signing request",
-			"ability", sign.DataSetCreateAbility,
-			"issuer", invocation.Issuer().DID(),
-			"dataset", nb.DataSet.String(),
-			"payee", nb.Payee.String(),
-			"metadata", nb.Metadata.Values,
+			"command", sign.DataSetCreateCommand,
+			"issuer", inv.Issuer(),
+			"dataset", args.DataSet.String(),
+			"payee", args.Payee,
+			"metadata", args.Metadata.Values,
 		)
-		// issuer must have a delegation to use the service (cannot be self signed)
-		if capability.With() != id.DID().String() {
-			return result.Error[sign.DataSetCreateOk, failure.IPLDBuilderFailure](
-				sign.NewInvalidResourceError(id.DID().String(), capability.With()),
-			), nil, nil
+		// issuer must have a delegation to use the service (cannot be self-signed)
+		if subj := req.Task().Subject().String(); subj != id.DID().String() {
+			return res.SetFailure(newInvalidResourceError(id.DID().String(), subj))
 		}
 
-		s, err := signer.SignCreateDataSet(nb.DataSet, nb.Payee, toEIP712MetadataEntries(nb.Metadata))
+		s, err := signer.SignCreateDataSet(args.DataSet, common.BytesToAddress(args.Payee), toEIP712MetadataEntries(args.Metadata))
 		if err != nil {
-			return nil, nil, fmt.Errorf("signing create dataset: %w", err)
+			return fmt.Errorf("signing create dataset: %w", err)
 		}
-
-		return result.Ok[sign.DataSetCreateOk, failure.IPLDBuilderFailure](sign.DataSetCreateOk(*s)), nil, nil
+		ok := toLibforgeAuthSig(s)
+		return res.SetSuccess(&ok)
 	}
 }
 
-func NewDataSetDeleteHandler(id principal.Signer, signer types.OperationSigner) server.HandlerFunc[sign.DataSetDeleteCaveats, sign.DataSetDeleteOk, failure.IPLDBuilderFailure] {
-	return func(
-		ctx context.Context,
-		capability ucan.Capability[sign.DataSetDeleteCaveats],
-		invocation invocation.Invocation,
-		context server.InvocationContext,
-	) (result.Result[sign.DataSetDeleteOk, failure.IPLDBuilderFailure], fx.Effects, error) {
-		nb := capability.Nb()
+// NewDataSetDeleteHandler wraps the underlying eip712 signer in a
+// bindexec UCAN handler for /pdp/sign/dataset/delete.
+func NewDataSetDeleteHandler(id ucan.Signer, signer types.OperationSigner) bindexec.HandlerFunc[*sign.DataSetDeleteArguments, *sign.DataSetDeleteOK] {
+	return func(req *bindexec.Request[*sign.DataSetDeleteArguments], res *bindexec.Response[*sign.DataSetDeleteOK]) error {
+		args := req.Task().Arguments()
+		inv := req.Invocation()
 		log.Infow(
 			"handling signing request",
-			"ability", sign.DataSetDeleteAbility,
-			"issuer", invocation.Issuer().DID(),
-			"dataset", nb.DataSet.String(),
+			"command", sign.DataSetDeleteCommand,
+			"issuer", inv.Issuer(),
+			"dataset", args.DataSet.String(),
 		)
-		// issuer must have a delegation to use the service (cannot be self signed)
-		if capability.With() != id.DID().String() {
-			return result.Error[sign.DataSetDeleteOk, failure.IPLDBuilderFailure](
-				sign.NewInvalidResourceError(id.DID().String(), capability.With()),
-			), nil, nil
+		if subj := req.Task().Subject().String(); subj != id.DID().String() {
+			return res.SetFailure(newInvalidResourceError(id.DID().String(), subj))
 		}
 
-		s, err := signer.SignDeleteDataSet(nb.DataSet)
+		s, err := signer.SignDeleteDataSet(args.DataSet)
 		if err != nil {
-			return nil, nil, fmt.Errorf("signing delete dataset: %w", err)
+			return fmt.Errorf("signing delete dataset: %w", err)
 		}
-
-		return result.Ok[sign.DataSetDeleteOk, failure.IPLDBuilderFailure](sign.DataSetDeleteOk(*s)), nil, nil
+		ok := toLibforgeAuthSig(s)
+		return res.SetSuccess(&ok)
 	}
 }
 
-func NewPiecesAddHandler(id principal.Signer, signer types.OperationSigner) server.HandlerFunc[sign.PiecesAddCaveats, sign.PiecesAddOk, failure.IPLDBuilderFailure] {
-	return func(
-		ctx context.Context,
-		capability ucan.Capability[sign.PiecesAddCaveats],
-		invocation invocation.Invocation,
-		context server.InvocationContext,
-	) (result.Result[sign.PiecesAddOk, failure.IPLDBuilderFailure], fx.Effects, error) {
-		nb := capability.Nb()
-		nonce := nb.Nonce
-
+// NewPiecesAddHandler wraps the underlying eip712 signer in a
+// bindexec UCAN handler for /pdp/sign/pieces/add.
+func NewPiecesAddHandler(id ucan.Signer, signer types.OperationSigner) bindexec.HandlerFunc[*sign.PiecesAddArguments, *sign.PiecesAddOK] {
+	return func(req *bindexec.Request[*sign.PiecesAddArguments], res *bindexec.Response[*sign.PiecesAddOK]) error {
+		args := req.Task().Arguments()
+		inv := req.Invocation()
 		log.Infow(
 			"handling signing request",
-			"ability", sign.PiecesAddAbility,
-			"issuer", invocation.Issuer().DID(),
-			"dataset", nb.DataSet.String(),
-			"nonce", nonce.String(),
-			"pieces", len(nb.PieceData),
+			"command", sign.PiecesAddCommand,
+			"issuer", inv.Issuer(),
+			"dataset", args.DataSet.String(),
+			"nonce", args.Nonce.String(),
+			"pieces", len(args.PieceData),
 		)
-		// issuer must have a delegation to use the service (cannot be self signed)
-		if capability.With() != id.DID().String() {
-			return result.Error[sign.PiecesAddOk, failure.IPLDBuilderFailure](
-				sign.NewInvalidResourceError(id.DID().String(), capability.With()),
-			), nil, nil
+		if subj := req.Task().Subject().String(); subj != id.DID().String() {
+			return res.SetFailure(newInvalidResourceError(id.DID().String(), subj))
 		}
 
-		// TODO: validate pieces
+		// TODO: validate pieces against the proof container
 
-		metadata := make([][]eip712.MetadataEntry, 0, len(nb.Metadata))
-		for _, m := range nb.Metadata {
+		metadata := make([][]eip712.MetadataEntry, 0, len(args.Metadata))
+		for _, m := range args.Metadata {
 			metadata = append(metadata, toEIP712MetadataEntries(m))
 		}
 
-		s, err := signer.SignAddPieces(nb.DataSet, nonce, nb.PieceData, metadata)
+		s, err := signer.SignAddPieces(args.DataSet, args.Nonce, args.PieceData, metadata)
 		if err != nil {
-			return nil, nil, fmt.Errorf("signing add pieces: %w", err)
+			return fmt.Errorf("signing add pieces: %w", err)
 		}
-
-		return result.Ok[sign.PiecesAddOk, failure.IPLDBuilderFailure](sign.PiecesAddOk(*s)), nil, nil
+		ok := toLibforgeAuthSig(s)
+		return res.SetSuccess(&ok)
 	}
 }
 
-func NewPiecesRemoveScheduleHandler(id principal.Signer, signer types.OperationSigner) server.HandlerFunc[sign.PiecesRemoveScheduleCaveats, sign.PiecesRemoveScheduleOk, failure.IPLDBuilderFailure] {
-	return func(
-		ctx context.Context,
-		capability ucan.Capability[sign.PiecesRemoveScheduleCaveats],
-		invocation invocation.Invocation,
-		context server.InvocationContext,
-	) (result.Result[sign.PiecesRemoveScheduleOk, failure.IPLDBuilderFailure], fx.Effects, error) {
-		nb := capability.Nb()
+// NewPiecesRemoveScheduleHandler wraps the underlying eip712 signer in a
+// bindexec UCAN handler for /pdp/sign/pieces/remove/schedule.
+func NewPiecesRemoveScheduleHandler(id ucan.Signer, signer types.OperationSigner) bindexec.HandlerFunc[*sign.PiecesRemoveScheduleArguments, *sign.PiecesRemoveScheduleOK] {
+	return func(req *bindexec.Request[*sign.PiecesRemoveScheduleArguments], res *bindexec.Response[*sign.PiecesRemoveScheduleOK]) error {
+		args := req.Task().Arguments()
+		inv := req.Invocation()
 		log.Infow(
 			"handling signing request",
-			"ability", sign.PiecesRemoveScheduleAbility,
-			"issuer", invocation.Issuer().DID(),
-			"dataset", nb.DataSet.String(),
-			"pieces", len(nb.Pieces),
+			"command", sign.PiecesRemoveScheduleCommand,
+			"issuer", inv.Issuer(),
+			"dataset", args.DataSet.String(),
+			"pieces", len(args.Pieces),
 		)
-		// issuer must have a delegation to use the service (cannot be self signed)
-		if capability.With() != id.DID().String() {
-			return result.Error[sign.PiecesRemoveScheduleOk, failure.IPLDBuilderFailure](
-				sign.NewInvalidResourceError(id.DID().String(), capability.With()),
-			), nil, nil
+		if subj := req.Task().Subject().String(); subj != id.DID().String() {
+			return res.SetFailure(newInvalidResourceError(id.DID().String(), subj))
 		}
 
-		s, err := signer.SignSchedulePieceRemovals(nb.DataSet, nb.Pieces)
+		s, err := signer.SignSchedulePieceRemovals(args.DataSet, args.Pieces)
 		if err != nil {
-			return nil, nil, fmt.Errorf("signing schedule remove pieces: %w", err)
+			return fmt.Errorf("signing schedule remove pieces: %w", err)
 		}
+		ok := toLibforgeAuthSig(s)
+		return res.SetSuccess(&ok)
+	}
+}
 
-		return result.Ok[sign.PiecesRemoveScheduleOk, failure.IPLDBuilderFailure](sign.PiecesRemoveScheduleOk(*s)), nil, nil
+// toLibforgeAuthSig copies an eip712.AuthSignature into the libforge
+// pdp/sign.AuthSignature wire shape (fixed-size address/hash fields become
+// raw []byte).
+func toLibforgeAuthSig(s *eip712.AuthSignature) sign.AuthSignature {
+	return sign.AuthSignature{
+		Signature:  s.Signature,
+		V:          s.V,
+		R:          s.R[:],
+		S:          s.S[:],
+		SignedData: s.SignedData,
+		Signer:     s.Signer.Bytes(),
 	}
 }
 

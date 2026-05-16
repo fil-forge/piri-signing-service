@@ -6,10 +6,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
-	"github.com/fil-forge/go-ucanto/core/message"
-	"github.com/fil-forge/go-ucanto/ucan"
+	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/invocation"
 )
 
 // CreateDataSetRequest represents the request payload for creating a dataset
@@ -49,8 +48,10 @@ type HealthResponse struct {
 // - UCAN client (remote signing service)
 // - In-process signer (for testing/dev)
 //
-// This allows piri nodes to use either implementation interchangeably,
-// enabling easy testing and development without running a separate service.
+// The proofs parameter on each method threads UCAN delegations through:
+// their CIDs are attached as invocation proofs and the envelopes ride in
+// the execution request for server-side authorization. Pass an empty
+// slice when authorization is handled out-of-band (e.g. in-process).
 type SigningService interface {
 	// SignCreateDataSet signs a CreateDataSet operation
 	SignCreateDataSet(
@@ -59,10 +60,14 @@ type SigningService interface {
 		dataSet *big.Int,
 		payee common.Address,
 		metadata []eip712.MetadataEntry,
-		options ...delegation.Option,
+		proofs []ucan.Delegation,
+		options ...invocation.Option,
 	) (*eip712.AuthSignature, error)
 
-	// SignAddPieces signs an AddPieces operation
+	// SignAddPieces signs an AddPieces operation. The pieceProofs field
+	// carries the per-piece blob/accept invocation CIDs that prove
+	// sub-pieces; the referenced invocations and their pdp/accept receipts
+	// MUST be present in proofContainer.
 	SignAddPieces(
 		ctx context.Context,
 		issuer ucan.Signer,
@@ -70,9 +75,10 @@ type SigningService interface {
 		nonce *big.Int,
 		pieceData [][]byte,
 		metadata [][]eip712.MetadataEntry,
-		proofs [][]ipld.Link, // links to `blob/accept` tasks
-		proofData [][]message.AgentMessage, // invocations and receipts for the proof chain
-		options ...delegation.Option,
+		pieceProofs []sign.PieceProofs,
+		proofContainer ucan.Container,
+		proofs []ucan.Delegation,
+		options ...invocation.Option,
 	) (*eip712.AuthSignature, error)
 
 	// SignSchedulePieceRemovals signs a SchedulePieceRemovals operation
@@ -81,7 +87,8 @@ type SigningService interface {
 		issuer ucan.Signer,
 		dataSet *big.Int,
 		pieceIds []*big.Int,
-		options ...delegation.Option,
+		proofs []ucan.Delegation,
+		options ...invocation.Option,
 	) (*eip712.AuthSignature, error)
 
 	// SignDeleteDataSet signs a DeleteDataSet operation
@@ -89,7 +96,8 @@ type SigningService interface {
 		ctx context.Context,
 		issuer ucan.Signer,
 		dataSet *big.Int,
-		options ...delegation.Option,
+		proofs []ucan.Delegation,
+		options ...invocation.Option,
 	) (*eip712.AuthSignature, error)
 }
 

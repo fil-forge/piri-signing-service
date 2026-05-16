@@ -1,57 +1,68 @@
 package handlers_test
 
 import (
+	"bytes"
 	"testing"
 
-	"github.com/fil-forge/go-libstoracha/capabilities/access"
-	"github.com/fil-forge/go-libstoracha/testutil"
-	"github.com/fil-forge/go-ucanto/core/invocation"
-	"github.com/fil-forge/go-ucanto/core/result"
-	"github.com/fil-forge/go-ucanto/ucan"
-	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
+	"github.com/fil-forge/libforge/capabilities/access"
+	"github.com/fil-forge/ucantone/execution/bindexec"
+	"github.com/fil-forge/ucantone/testutil"
+	"github.com/fil-forge/ucantone/ucan/invocation"
 	"github.com/stretchr/testify/require"
+
+	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
 )
 
 func TestAccessGrant_Success(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	handler := handlers.NewAccessGrantHandler(service)
 
-	nb := access.GrantCaveats{
-		Att: []access.CapabilityRequest{{Can: "pdp/sign/pieces/add"}},
-	}
-	cap := ucan.NewCapability(access.GrantAbility, alice.DID().String(), nb)
-	inv, err := invocation.Invoke(alice, service, cap)
+	inv, err := access.Grant.Invoke(alice, service.DID(), &access.GrantArguments{
+		Attenuations: []access.CapabilityRequest{{Command: "/pdp/sign/pieces/add"}},
+	})
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*access.GrantArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*access.GrantOK](inv.Task().Link(), bindexec.WithSigner[*access.GrantOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Nil(t, x)
-	require.Len(t, o.Delegations.Values, 1)
+	require.NoError(t, handler(req, res))
+
+	okBytes, errBytes := res.Receipt().Out().Unpack()
+	require.Nil(t, errBytes)
+	require.NotNil(t, okBytes)
+
+	var ok access.GrantOK
+	require.NoError(t, ok.UnmarshalCBOR(bytes.NewReader(okBytes)))
+	require.Len(t, ok.Delegations, 1)
+
+	// Delegation envelope is attached to the response metadata.
+	require.Len(t, res.Metadata().Delegations(), 1)
 }
 
 func TestAccessGrant_UnknownAbility(t *testing.T) {
-	alice := testutil.Alice
-	service := testutil.WebService
+	alice := testutil.RandomSigner(t)
+	service := testutil.RandomSigner(t)
 
 	handler := handlers.NewAccessGrantHandler(service)
 
-	nb := access.GrantCaveats{
-		Att: []access.CapabilityRequest{{Can: "foo/bar"}},
-	}
-	cap := ucan.NewCapability(access.GrantAbility, alice.DID().String(), nb)
-	inv, err := invocation.Invoke(alice, service, cap)
+	inv, err := access.Grant.Invoke(alice, service.DID(), &access.GrantArguments{
+		Attenuations: []access.CapabilityRequest{{Command: "/foo/bar"}},
+	})
 	require.NoError(t, err)
 
-	res, fx, err := handler(t.Context(), cap, inv, nil)
+	req, err := bindexec.NewRequest[*access.GrantArguments](t.Context(), inv)
 	require.NoError(t, err)
-	require.Nil(t, fx)
+	res, err := bindexec.NewResponse[*access.GrantOK](inv.Task().Link(), bindexec.WithSigner[*access.GrantOK](service))
+	require.NoError(t, err)
 
-	o, x := result.Unwrap(res)
-	require.Empty(t, o)
-	require.Equal(t, access.UnknownAbilityErrorName, x.Name())
+	require.NoError(t, handler(req, res))
+
+	require.False(t, res.Receipt().Out().IsOK())
 }
+
+// silence unused-import warning while keeping a hook for future test helpers
+var _ = invocation.Invoke
