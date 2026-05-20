@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/libforge/commands/pdp/sign"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/invocation"
 )

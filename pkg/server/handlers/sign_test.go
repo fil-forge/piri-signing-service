@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/libforge/commands/pdp/sign"
 	"github.com/fil-forge/ucantone/execution/bindexec"
 	"github.com/fil-forge/ucantone/testutil"
 	"github.com/stretchr/testify/assert"

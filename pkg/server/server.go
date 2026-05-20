@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/fil-forge/libforge/capabilities/access"
-	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/libforge/commands/access"
+	"github.com/fil-forge/libforge/commands/pdp/sign"
 	"github.com/fil-forge/ucantone/execution/bindexec"
 	"github.com/fil-forge/ucantone/principal"
 	"github.com/fil-forge/ucantone/server"
@@ -27,11 +27,11 @@ var log = logging.Logger("pkg/server")
 func New(id principal.Signer, signer types.OperationSigner) *server.HTTPServer {
 	srv := server.NewHTTP(id)
 
-	srv.Handle(access.Grant, bindexec.NewHandler(handlers.NewAccessGrantHandler(id)))
-	srv.Handle(sign.DataSetCreate, bindexec.NewHandler(handlers.NewDataSetCreateHandler(id, signer)))
-	srv.Handle(sign.DataSetDelete, bindexec.NewHandler(handlers.NewDataSetDeleteHandler(id, signer)))
-	srv.Handle(sign.PiecesAdd, bindexec.NewHandler(handlers.NewPiecesAddHandler(id, signer)))
-	srv.Handle(sign.PiecesRemoveSchedule, bindexec.NewHandler(handlers.NewPiecesRemoveScheduleHandler(id, signer)))
+	srv.Handle(access.Grant.Command, bindexec.NewHandler(handlers.NewAccessGrantHandler(id)))
+	srv.Handle(sign.DataSetCreate.Command, bindexec.NewHandler(handlers.NewDataSetCreateHandler(id, signer)))
+	srv.Handle(sign.DataSetDelete.Command, bindexec.NewHandler(handlers.NewDataSetDeleteHandler(id, signer)))
+	srv.Handle(sign.PiecesAdd.Command, bindexec.NewHandler(handlers.NewPiecesAddHandler(id, signer)))
+	srv.Handle(sign.PiecesRemoveSchedule.Command, bindexec.NewHandler(handlers.NewPiecesRemoveScheduleHandler(id, signer)))
 
 	return srv
 }

@@ -8,7 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/libforge/commands/pdp/sign"
 	"github.com/fil-forge/ucantone/client"
 	uerrors "github.com/fil-forge/ucantone/errors"
 	"github.com/fil-forge/ucantone/execution/bindexec"
@@ -16,7 +16,7 @@ import (
 	"github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/testutil"
 	"github.com/fil-forge/ucantone/ucan"
-	"github.com/fil-forge/ucantone/validator/bindcap"
+	"github.com/fil-forge/ucantone/validator/bindcom"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +24,8 @@ import (
 // mustDelegate issues a delegation from `issuer` to `audience.DID()` for
 // `cap`, with the issuer's own DID as the subject. Bails the test if
 // delegation fails.
-func mustDelegate[A bindcap.Arguments](t *testing.T, cap *bindcap.Capability[A], issuer principal.Signer, audience principal.Signer) ucan.Delegation {
+func mustDelegate[A bindcom.Arguments](t *testing.T, cap bindcom.Command[A], issuer principal.Signer,
+	audience principal.Signer) ucan.Delegation {
 	t.Helper()
 	dlg, err := cap.Delegate(issuer, audience.DID(), issuer.DID())
 	require.NoError(t, err)
@@ -50,7 +51,7 @@ func TestClient_SignCreateDataSet(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.DataSetCreate, bindexec.NewHandler(
+	srv.Handle(sign.DataSetCreate.Command, bindexec.NewHandler(
 		func(req *bindexec.Request[*sign.DataSetCreateArguments], res *bindexec.Response[*sign.DataSetCreateOK]) error {
 			args := req.Task().Arguments()
 			assert.Equal(t, "12345", args.DataSet.String())
@@ -83,7 +84,7 @@ func TestClient_SignAddPieces(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.PiecesAdd, bindexec.NewHandler(
+	srv.Handle(sign.PiecesAdd.Command, bindexec.NewHandler(
 		func(req *bindexec.Request[*sign.PiecesAddArguments], res *bindexec.Response[*sign.PiecesAddOK]) error {
 			args := req.Task().Arguments()
 			assert.Equal(t, "12345", args.DataSet.String())
@@ -122,7 +123,7 @@ func TestClient_SignSchedulePieceRemovals(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.PiecesRemoveSchedule, bindexec.NewHandler(
+	srv.Handle(sign.PiecesRemoveSchedule.Command, bindexec.NewHandler(
 		func(req *bindexec.Request[*sign.PiecesRemoveScheduleArguments], res *bindexec.Response[*sign.PiecesRemoveScheduleOK]) error {
 			args := req.Task().Arguments()
 			assert.Equal(t, "12345", args.DataSet.String())
@@ -152,7 +153,7 @@ func TestClient_SignDeleteDataSet(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.DataSetDelete, bindexec.NewHandler(
+	srv.Handle(sign.DataSetDelete.Command, bindexec.NewHandler(
 		func(req *bindexec.Request[*sign.DataSetDeleteArguments], res *bindexec.Response[*sign.DataSetDeleteOK]) error {
 			args := req.Task().Arguments()
 			assert.Equal(t, "12345", args.DataSet.String())
@@ -174,7 +175,7 @@ func TestClient_ServerError(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.DataSetCreate, bindexec.NewHandler(
+	srv.Handle(sign.DataSetCreate.Command, bindexec.NewHandler(
 		func(req *bindexec.Request[*sign.DataSetCreateArguments], res *bindexec.Response[*sign.DataSetCreateOK]) error {
 			return res.SetFailure(uerrors.New("Internal", "boom"))
 		},

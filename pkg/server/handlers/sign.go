@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/libforge/commands/pdp/sign"
 	"github.com/fil-forge/ucantone/errors"
 	"github.com/fil-forge/ucantone/execution/bindexec"
 	"github.com/fil-forge/ucantone/ucan"
@@ -33,7 +33,7 @@ func NewDataSetCreateHandler(id ucan.Signer, signer types.OperationSigner) binde
 		inv := req.Invocation()
 		log.Infow(
 			"handling signing request",
-			"command", sign.DataSetCreateCommand,
+			"command", sign.DataSetCreate.Command,
 			"issuer", inv.Issuer(),
 			"dataset", args.DataSet.String(),
 			"payee", args.Payee,
@@ -61,7 +61,7 @@ func NewDataSetDeleteHandler(id ucan.Signer, signer types.OperationSigner) binde
 		inv := req.Invocation()
 		log.Infow(
 			"handling signing request",
-			"command", sign.DataSetDeleteCommand,
+			"command", sign.DataSetDelete.Command,
 			"issuer", inv.Issuer(),
 			"dataset", args.DataSet.String(),
 		)
@@ -86,7 +86,7 @@ func NewPiecesAddHandler(id ucan.Signer, signer types.OperationSigner) bindexec.
 		inv := req.Invocation()
 		log.Infow(
 			"handling signing request",
-			"command", sign.PiecesAddCommand,
+			"command", sign.PiecesAdd.Command,
 			"issuer", inv.Issuer(),
 			"dataset", args.DataSet.String(),
 			"nonce", args.Nonce.String(),
@@ -120,7 +120,7 @@ func NewPiecesRemoveScheduleHandler(id ucan.Signer, signer types.OperationSigner
 		inv := req.Invocation()
 		log.Infow(
 			"handling signing request",
-			"command", sign.PiecesRemoveScheduleCommand,
+			"command", sign.PiecesRemoveSchedule.Command,
 			"issuer", inv.Issuer(),
 			"dataset", args.DataSet.String(),
 			"pieces", len(args.Pieces),

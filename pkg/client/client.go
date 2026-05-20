@@ -10,7 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/libforge/capabilities/pdp/sign"
+	"github.com/fil-forge/libforge/commands/pdp/sign"
 	"github.com/fil-forge/ucantone/client"
 	"github.com/fil-forge/ucantone/did"
 	"github.com/fil-forge/ucantone/errors"
@@ -96,7 +96,7 @@ func (c *Client) SignCreateDataSet(
 	}
 	inv, err := sign.DataSetCreate.Invoke(issuer, c.ServiceDID, args, c.mergeOptionsWithProofs(options, proofs)...)
 	if err != nil {
-		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetCreateCommand, err)
+		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetCreate.Command, err)
 	}
 	return c.execAuthSignatureRequest(ctx, inv, execution.WithProofs(proofs...))
 }
@@ -130,7 +130,7 @@ func (c *Client) SignAddPieces(
 	}
 	inv, err := sign.PiecesAdd.Invoke(issuer, c.ServiceDID, args, c.mergeOptionsWithProofs(options, proofs)...)
 	if err != nil {
-		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesAddCommand, err)
+		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesAdd.Command, err)
 	}
 
 	reqOpts := []execution.RequestOption{execution.WithProofs(proofs...)}
@@ -159,7 +159,7 @@ func (c *Client) SignSchedulePieceRemovals(
 	}
 	inv, err := sign.PiecesRemoveSchedule.Invoke(issuer, c.ServiceDID, args, c.mergeOptionsWithProofs(options, proofs)...)
 	if err != nil {
-		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesRemoveScheduleCommand, err)
+		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesRemoveSchedule.Command, err)
 	}
 	return c.execAuthSignatureRequest(ctx, inv, execution.WithProofs(proofs...))
 }
@@ -175,7 +175,7 @@ func (c *Client) SignDeleteDataSet(
 	args := &sign.DataSetDeleteArguments{DataSet: dataSet}
 	inv, err := sign.DataSetDelete.Invoke(issuer, c.ServiceDID, args, c.mergeOptionsWithProofs(options, proofs)...)
 	if err != nil {
-		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetDeleteCommand, err)
+		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetDelete.Command, err)
 	}
 	return c.execAuthSignatureRequest(ctx, inv, execution.WithProofs(proofs...))
 }
