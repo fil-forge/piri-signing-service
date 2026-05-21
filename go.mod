@@ -5,8 +5,8 @@ go 1.25.3
 require (
 	github.com/ethereum/go-ethereum v1.16.7
 	github.com/fil-forge/filecoin-services/go v0.0.0-20260507172456-36ebe4467390
-	github.com/fil-forge/libforge v0.0.0-20260520212325-851c11cee90e
-	github.com/fil-forge/ucantone v0.0.0-20260520215010-8f52d2552322
+	github.com/fil-forge/libforge v0.0.0-20260521215559-0f7fa19c9ebc
+	github.com/fil-forge/ucantone v0.0.0-20260521210642-84d8c533075b
 	github.com/ipfs/go-cid v0.6.1
 	github.com/ipfs/go-log/v2 v2.9.1
 	github.com/labstack/echo/v4 v4.13.4
@@ -30,6 +30,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.0 // indirect
 	github.com/ethereum/c-kzg-4844/v2 v2.1.5 // indirect
 	github.com/ethereum/go-verkle v0.2.2 // indirect
+	github.com/filecoin-project/go-state-types v0.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect

@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/fil-forge/libforge/commands/access"
+	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/errors"
-	"github.com/fil-forge/ucantone/execution/bindexec"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/ucan/container"
 	"github.com/fil-forge/ucantone/ucan/delegation"
@@ -20,8 +20,8 @@ const grantValidity = time.Hour
 // It issues a one-hour delegation per requested capability, returning the
 // CIDs in the receipt OK and attaching the signed delegations to the
 // response container as metadata.
-func NewAccessGrantHandler(id ucan.Signer) bindexec.HandlerFunc[*access.GrantArguments, *access.GrantOK] {
-	return func(req *bindexec.Request[*access.GrantArguments], res *bindexec.Response[*access.GrantOK]) error {
+func NewAccessGrantHandler(id ucan.Signer) binding.HandlerFunc[*access.GrantArguments, *access.GrantOK] {
+	return func(req *binding.Request[*access.GrantArguments], res *binding.Response[*access.GrantOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
 
@@ -43,10 +43,9 @@ func NewAccessGrantHandler(id ucan.Signer) bindexec.HandlerFunc[*access.GrantArg
 		delegations := make([]ucan.Delegation, 0, len(args.Attenuations))
 		links := make([]cid.Cid, 0, len(args.Attenuations))
 		for _, ar := range args.Attenuations {
-			cmdStr := string(ar.Command)
-			if !strings.HasPrefix(cmdStr, "/pdp/sign/") {
+			if !strings.HasPrefix(ar.Command.String(), "/pdp/sign/") {
 				return res.SetFailure(errors.New(access.UnknownAbilityErrorName,
-					"unknown ability: %s", cmdStr))
+					"unknown ability: %s", ar.Command))
 			}
 
 			dlg, err := delegation.Delegate(
@@ -59,7 +58,7 @@ func NewAccessGrantHandler(id ucan.Signer) bindexec.HandlerFunc[*access.GrantArg
 			if err != nil {
 				return res.SetFailure(err)
 			}
-			log.Infow("delegated capability", "command", cmdStr, "audience", audience)
+			log.Infow("delegated capability", "command", ar.Command, "audience", audience)
 			delegations = append(delegations, dlg)
 			links = append(links, dlg.Link())
 		}

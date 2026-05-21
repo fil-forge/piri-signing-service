@@ -9,14 +9,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
 	"github.com/fil-forge/libforge/commands/pdp/sign"
+	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/client"
 	uerrors "github.com/fil-forge/ucantone/errors"
-	"github.com/fil-forge/ucantone/execution/bindexec"
 	"github.com/fil-forge/ucantone/principal"
 	"github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/testutil"
 	"github.com/fil-forge/ucantone/ucan"
-	"github.com/fil-forge/ucantone/validator/bindcom"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +23,7 @@ import (
 // mustDelegate issues a delegation from `issuer` to `audience.DID()` for
 // `cap`, with the issuer's own DID as the subject. Bails the test if
 // delegation fails.
-func mustDelegate[A bindcom.Arguments](t *testing.T, cap bindcom.Command[A], issuer principal.Signer,
+func mustDelegate[Args, OK binding.CBORValue](t *testing.T, cap binding.Binding[Args, OK], issuer principal.Signer,
 	audience principal.Signer) ucan.Delegation {
 	t.Helper()
 	dlg, err := cap.Delegate(issuer, audience.DID(), issuer.DID())
@@ -51,8 +50,8 @@ func TestClient_SignCreateDataSet(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.DataSetCreate.Command, bindexec.NewHandler(
-		func(req *bindexec.Request[*sign.DataSetCreateArguments], res *bindexec.Response[*sign.DataSetCreateOK]) error {
+	srv.Handle(sign.DataSetCreate.Command, binding.NewHandler(
+		func(req *binding.Request[*sign.DataSetCreateArguments], res *binding.Response[*sign.DataSetCreateOK]) error {
 			args := req.Task().Arguments()
 			assert.Equal(t, "12345", args.DataSet.String())
 			assert.Equal(t, "0xabCDEF1234567890ABcDEF1234567890aBCDeF12", common.BytesToAddress(args.Payee).String())
@@ -84,8 +83,8 @@ func TestClient_SignAddPieces(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.PiecesAdd.Command, bindexec.NewHandler(
-		func(req *bindexec.Request[*sign.PiecesAddArguments], res *bindexec.Response[*sign.PiecesAddOK]) error {
+	srv.Handle(sign.PiecesAdd.Command, binding.NewHandler(
+		func(req *binding.Request[*sign.PiecesAddArguments], res *binding.Response[*sign.PiecesAddOK]) error {
 			args := req.Task().Arguments()
 			assert.Equal(t, "12345", args.DataSet.String())
 			assert.Equal(t, "0", args.Nonce.String())
@@ -123,8 +122,8 @@ func TestClient_SignSchedulePieceRemovals(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.PiecesRemoveSchedule.Command, bindexec.NewHandler(
-		func(req *bindexec.Request[*sign.PiecesRemoveScheduleArguments], res *bindexec.Response[*sign.PiecesRemoveScheduleOK]) error {
+	srv.Handle(sign.PiecesRemoveSchedule.Command, binding.NewHandler(
+		func(req *binding.Request[*sign.PiecesRemoveScheduleArguments], res *binding.Response[*sign.PiecesRemoveScheduleOK]) error {
 			args := req.Task().Arguments()
 			assert.Equal(t, "12345", args.DataSet.String())
 			assert.Len(t, args.Pieces, 3)
@@ -153,8 +152,8 @@ func TestClient_SignDeleteDataSet(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.DataSetDelete.Command, bindexec.NewHandler(
-		func(req *bindexec.Request[*sign.DataSetDeleteArguments], res *bindexec.Response[*sign.DataSetDeleteOK]) error {
+	srv.Handle(sign.DataSetDelete.Command, binding.NewHandler(
+		func(req *binding.Request[*sign.DataSetDeleteArguments], res *binding.Response[*sign.DataSetDeleteOK]) error {
 			args := req.Task().Arguments()
 			assert.Equal(t, "12345", args.DataSet.String())
 			return res.SetSuccess(&mock)
@@ -175,8 +174,8 @@ func TestClient_ServerError(t *testing.T) {
 	alice := testutil.RandomSigner(t)
 
 	srv := server.NewHTTP(service)
-	srv.Handle(sign.DataSetCreate.Command, bindexec.NewHandler(
-		func(req *bindexec.Request[*sign.DataSetCreateArguments], res *bindexec.Response[*sign.DataSetCreateOK]) error {
+	srv.Handle(sign.DataSetCreate.Command, binding.NewHandler(
+		func(req *binding.Request[*sign.DataSetCreateArguments], res *binding.Response[*sign.DataSetCreateOK]) error {
 			return res.SetFailure(uerrors.New("Internal", "boom"))
 		},
 	))

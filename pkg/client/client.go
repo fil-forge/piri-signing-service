@@ -98,7 +98,7 @@ func (c *Client) SignCreateDataSet(
 	if err != nil {
 		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetCreate.Command, err)
 	}
-	return c.execAuthSignatureRequest(ctx, inv, execution.WithProofs(proofs...))
+	return c.execAuthSignatureRequest(ctx, inv, execution.WithDelegations(proofs...))
 }
 
 // SignAddPieces signs an AddPieces operation via UCAN invocation. The
@@ -133,7 +133,7 @@ func (c *Client) SignAddPieces(
 		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesAdd.Command, err)
 	}
 
-	reqOpts := []execution.RequestOption{execution.WithProofs(proofs...)}
+	reqOpts := []execution.RequestOption{execution.WithDelegations(proofs...)}
 	if proofContainer != nil {
 		reqOpts = append(reqOpts,
 			execution.WithInvocations(proofContainer.Invocations()...),
@@ -161,7 +161,7 @@ func (c *Client) SignSchedulePieceRemovals(
 	if err != nil {
 		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesRemoveSchedule.Command, err)
 	}
-	return c.execAuthSignatureRequest(ctx, inv, execution.WithProofs(proofs...))
+	return c.execAuthSignatureRequest(ctx, inv, execution.WithDelegations(proofs...))
 }
 
 // SignDeleteDataSet signs a DeleteDataSet operation via UCAN invocation.
@@ -177,7 +177,7 @@ func (c *Client) SignDeleteDataSet(
 	if err != nil {
 		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetDelete.Command, err)
 	}
-	return c.execAuthSignatureRequest(ctx, inv, execution.WithProofs(proofs...))
+	return c.execAuthSignatureRequest(ctx, inv, execution.WithDelegations(proofs...))
 }
 
 func (c *Client) mergeOptionsWithProofs(options []invocation.Option, proofs []ucan.Delegation) []invocation.Option {

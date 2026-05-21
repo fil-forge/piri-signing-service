@@ -6,8 +6,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
 	"github.com/fil-forge/libforge/commands/pdp/sign"
+	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/errors"
-	"github.com/fil-forge/ucantone/execution/bindexec"
 	"github.com/fil-forge/ucantone/ucan"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -26,9 +26,9 @@ func newInvalidResourceError(expected, actual string) error {
 }
 
 // NewDataSetCreateHandler wraps the underlying eip712 signer in a
-// bindexec UCAN handler for /pdp/sign/dataset/create.
-func NewDataSetCreateHandler(id ucan.Signer, signer types.OperationSigner) bindexec.HandlerFunc[*sign.DataSetCreateArguments, *sign.DataSetCreateOK] {
-	return func(req *bindexec.Request[*sign.DataSetCreateArguments], res *bindexec.Response[*sign.DataSetCreateOK]) error {
+// binding UCAN handler for /pdp/sign/dataset/create.
+func NewDataSetCreateHandler(id ucan.Signer, signer types.OperationSigner) binding.HandlerFunc[*sign.DataSetCreateArguments, *sign.DataSetCreateOK] {
+	return func(req *binding.Request[*sign.DataSetCreateArguments], res *binding.Response[*sign.DataSetCreateOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
 		log.Infow(
@@ -54,9 +54,9 @@ func NewDataSetCreateHandler(id ucan.Signer, signer types.OperationSigner) binde
 }
 
 // NewDataSetDeleteHandler wraps the underlying eip712 signer in a
-// bindexec UCAN handler for /pdp/sign/dataset/delete.
-func NewDataSetDeleteHandler(id ucan.Signer, signer types.OperationSigner) bindexec.HandlerFunc[*sign.DataSetDeleteArguments, *sign.DataSetDeleteOK] {
-	return func(req *bindexec.Request[*sign.DataSetDeleteArguments], res *bindexec.Response[*sign.DataSetDeleteOK]) error {
+// binding UCAN handler for /pdp/sign/dataset/delete.
+func NewDataSetDeleteHandler(id ucan.Signer, signer types.OperationSigner) binding.HandlerFunc[*sign.DataSetDeleteArguments, *sign.DataSetDeleteOK] {
+	return func(req *binding.Request[*sign.DataSetDeleteArguments], res *binding.Response[*sign.DataSetDeleteOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
 		log.Infow(
@@ -79,9 +79,9 @@ func NewDataSetDeleteHandler(id ucan.Signer, signer types.OperationSigner) binde
 }
 
 // NewPiecesAddHandler wraps the underlying eip712 signer in a
-// bindexec UCAN handler for /pdp/sign/pieces/add.
-func NewPiecesAddHandler(id ucan.Signer, signer types.OperationSigner) bindexec.HandlerFunc[*sign.PiecesAddArguments, *sign.PiecesAddOK] {
-	return func(req *bindexec.Request[*sign.PiecesAddArguments], res *bindexec.Response[*sign.PiecesAddOK]) error {
+// binding UCAN handler for /pdp/sign/pieces/add.
+func NewPiecesAddHandler(id ucan.Signer, signer types.OperationSigner) binding.HandlerFunc[*sign.PiecesAddArguments, *sign.PiecesAddOK] {
+	return func(req *binding.Request[*sign.PiecesAddArguments], res *binding.Response[*sign.PiecesAddOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
 		log.Infow(
@@ -113,9 +113,10 @@ func NewPiecesAddHandler(id ucan.Signer, signer types.OperationSigner) bindexec.
 }
 
 // NewPiecesRemoveScheduleHandler wraps the underlying eip712 signer in a
-// bindexec UCAN handler for /pdp/sign/pieces/remove/schedule.
-func NewPiecesRemoveScheduleHandler(id ucan.Signer, signer types.OperationSigner) bindexec.HandlerFunc[*sign.PiecesRemoveScheduleArguments, *sign.PiecesRemoveScheduleOK] {
-	return func(req *bindexec.Request[*sign.PiecesRemoveScheduleArguments], res *bindexec.Response[*sign.PiecesRemoveScheduleOK]) error {
+// binding UCAN handler for /pdp/sign/pieces/remove/schedule.
+func NewPiecesRemoveScheduleHandler(id ucan.Signer, signer types.OperationSigner) binding.HandlerFunc[*sign.PiecesRemoveScheduleArguments, *sign.PiecesRemoveScheduleOK] {
+	return func(req *binding.Request[*sign.PiecesRemoveScheduleArguments],
+		res *binding.Response[*sign.PiecesRemoveScheduleOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
 		log.Infow(

@@ -5,8 +5,9 @@ import (
 	"testing"
 
 	"github.com/fil-forge/libforge/commands/access"
-	"github.com/fil-forge/ucantone/execution/bindexec"
+	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/testutil"
+	"github.com/fil-forge/ucantone/ucan/command"
 	"github.com/fil-forge/ucantone/ucan/invocation"
 	"github.com/stretchr/testify/require"
 
@@ -20,13 +21,13 @@ func TestAccessGrant_Success(t *testing.T) {
 	handler := handlers.NewAccessGrantHandler(service)
 
 	inv, err := access.Grant.Invoke(alice, service.DID(), &access.GrantArguments{
-		Attenuations: []access.CapabilityRequest{{Command: "/pdp/sign/pieces/add"}},
+		Attenuations: []access.CapabilityRequest{{Command: command.MustParse("/pdp/sign/pieces/add")}},
 	})
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*access.GrantArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*access.GrantArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*access.GrantOK](inv.Task().Link(), bindexec.WithSigner[*access.GrantOK](service))
+	res, err := binding.NewResponse[*access.GrantOK](inv.Task().Link(), binding.WithSigner[*access.GrantOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -50,13 +51,13 @@ func TestAccessGrant_UnknownAbility(t *testing.T) {
 	handler := handlers.NewAccessGrantHandler(service)
 
 	inv, err := access.Grant.Invoke(alice, service.DID(), &access.GrantArguments{
-		Attenuations: []access.CapabilityRequest{{Command: "/foo/bar"}},
+		Attenuations: []access.CapabilityRequest{{Command: command.MustParse("/foo/bar")}},
 	})
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*access.GrantArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*access.GrantArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*access.GrantOK](inv.Task().Link(), bindexec.WithSigner[*access.GrantOK](service))
+	res, err := binding.NewResponse[*access.GrantOK](inv.Task().Link(), binding.WithSigner[*access.GrantOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))

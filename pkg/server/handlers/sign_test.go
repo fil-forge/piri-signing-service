@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fil-forge/libforge/commands/pdp/sign"
-	"github.com/fil-forge/ucantone/execution/bindexec"
+	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,9 +49,9 @@ func TestSignCreateDataSet_Success(t *testing.T) {
 	inv, err := sign.DataSetCreate.Invoke(alice, service.DID(), args)
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*sign.DataSetCreateOK](inv.Task().Link(), bindexec.WithSigner[*sign.DataSetCreateOK](service))
+	res, err := binding.NewResponse[*sign.DataSetCreateOK](inv.Task().Link(), binding.WithSigner[*sign.DataSetCreateOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -85,9 +85,9 @@ func TestSignCreateDataSet_InvalidResource(t *testing.T) {
 	inv, err := sign.DataSetCreate.Invoke(alice, alice.DID(), args)
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*sign.DataSetCreateOK](inv.Task().Link(), bindexec.WithSigner[*sign.DataSetCreateOK](service))
+	res, err := binding.NewResponse[*sign.DataSetCreateOK](inv.Task().Link(), binding.WithSigner[*sign.DataSetCreateOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -105,9 +105,9 @@ func TestSignDeleteDataSet_Success(t *testing.T) {
 	inv, err := sign.DataSetDelete.Invoke(alice, service.DID(), args)
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*sign.DataSetDeleteOK](inv.Task().Link(), bindexec.WithSigner[*sign.DataSetDeleteOK](service))
+	res, err := binding.NewResponse[*sign.DataSetDeleteOK](inv.Task().Link(), binding.WithSigner[*sign.DataSetDeleteOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -131,9 +131,9 @@ func TestSignDeleteDataSet_InvalidResource(t *testing.T) {
 	inv, err := sign.DataSetDelete.Invoke(alice, alice.DID(), args)
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*sign.DataSetDeleteOK](inv.Task().Link(), bindexec.WithSigner[*sign.DataSetDeleteOK](service))
+	res, err := binding.NewResponse[*sign.DataSetDeleteOK](inv.Task().Link(), binding.WithSigner[*sign.DataSetDeleteOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -162,9 +162,9 @@ func TestSignAddPieces_Success(t *testing.T) {
 	inv, err := sign.PiecesAdd.Invoke(alice, service.DID(), args)
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*sign.PiecesAddOK](inv.Task().Link(), bindexec.WithSigner[*sign.PiecesAddOK](service))
+	res, err := binding.NewResponse[*sign.PiecesAddOK](inv.Task().Link(), binding.WithSigner[*sign.PiecesAddOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -191,9 +191,9 @@ func TestSignAddPieces_InvalidResource(t *testing.T) {
 	inv, err := sign.PiecesAdd.Invoke(alice, alice.DID(), args)
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*sign.PiecesAddOK](inv.Task().Link(), bindexec.WithSigner[*sign.PiecesAddOK](service))
+	res, err := binding.NewResponse[*sign.PiecesAddOK](inv.Task().Link(), binding.WithSigner[*sign.PiecesAddOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -214,9 +214,9 @@ func TestSignScheduleRemovePieces_Success(t *testing.T) {
 	inv, err := sign.PiecesRemoveSchedule.Invoke(alice, service.DID(), args)
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*sign.PiecesRemoveScheduleOK](inv.Task().Link(), bindexec.WithSigner[*sign.PiecesRemoveScheduleOK](service))
+	res, err := binding.NewResponse[*sign.PiecesRemoveScheduleOK](inv.Task().Link(), binding.WithSigner[*sign.PiecesRemoveScheduleOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -243,9 +243,9 @@ func TestSignScheduleRemovePieces_InvalidResource(t *testing.T) {
 	inv, err := sign.PiecesRemoveSchedule.Invoke(alice, alice.DID(), args)
 	require.NoError(t, err)
 
-	req, err := bindexec.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
+	req, err := binding.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := bindexec.NewResponse[*sign.PiecesRemoveScheduleOK](inv.Task().Link(), bindexec.WithSigner[*sign.PiecesRemoveScheduleOK](service))
+	res, err := binding.NewResponse[*sign.PiecesRemoveScheduleOK](inv.Task().Link(), binding.WithSigner[*sign.PiecesRemoveScheduleOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
