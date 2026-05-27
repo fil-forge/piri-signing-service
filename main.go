@@ -154,7 +154,10 @@ func run(cmd *cobra.Command, args []string) error {
 	handler := handlers.NewHandler(s)
 
 	// Create UCAN server (UCAN 1.0 via ucantone + libforge)
-	ucanSrv := server.New(id, s)
+	ucanSrv, err := server.New(id, s)
+	if err != nil {
+		return fmt.Errorf("creating UCAN server: %w", err)
+	}
 
 	// Setup routes — the ucantone server is an http.Handler, route POST / to it.
 	e.POST("/", echo.WrapHandler(ucanSrv))
