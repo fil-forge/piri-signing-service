@@ -14,13 +14,10 @@ import (
 	"github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/ucan"
 	"github.com/fil-forge/ucantone/validator"
-	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
 	"github.com/fil-forge/piri-signing-service/pkg/types"
 )
-
-var log = logging.Logger("pkg/server")
 
 type config struct {
 	insecureDidResolution bool
