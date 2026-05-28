@@ -77,6 +77,10 @@ func init() {
 
 	rootCmd.Flags().String("signing-keystore-password", "", "Signing keystore password")
 	cobra.CheckErr(viper.BindPFlag("signing_keystore_password", rootCmd.Flags().Lookup("signing-keystore-password")))
+
+	rootCmd.Flags().Bool("insecure-did-resolution", false, "Enable insecure did resolution over http")
+	cobra.CheckErr(viper.BindPFlag("insecure_did_resolution", rootCmd.Flags().Lookup("insecure-did-resolution")))
+	cobra.CheckErr(rootCmd.Flags().MarkHidden("insecure-did-resolution"))
 }
 
 func run(cmd *cobra.Command, args []string) error {
@@ -154,7 +158,11 @@ func run(cmd *cobra.Command, args []string) error {
 	handler := handlers.NewHandler(s)
 
 	// Create UCAN server (UCAN 1.0 via ucantone + libforge)
-	ucanSrv, err := server.New(id, s)
+	var ucanSvrOpts []server.Option
+	if cfg.InsecureDIDResolution {
+		ucanSvrOpts = append(ucanSvrOpts, server.WithInsecureDIDResolution())
+	}
+	ucanSrv, err := server.New(id, s, ucanSvrOpts...)
 	if err != nil {
 		return fmt.Errorf("creating UCAN server: %w", err)
 	}

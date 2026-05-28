@@ -46,6 +46,9 @@ type Config struct {
 	SigningKeyPath          string `mapstructure:"signing_key_path"`
 	SigningKeystorePath     string `mapstructure:"signing_keystore_path"`
 	SigningKeystorePassword string `mapstructure:"signing_keystore_password"`
+
+	// development server settings
+	InsecureDIDResolution bool `mapstructure:"insecure_did_resolution"`
 }
 
 // InitViper initializes Viper with defaults and binds it to Cobra flags

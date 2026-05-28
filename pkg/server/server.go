@@ -22,6 +22,19 @@ import (
 
 var log = logging.Logger("pkg/server")
 
+type config struct {
+	insecureDidResolution bool
+}
+
+type Option func(*config) error
+
+func WithInsecureDIDResolution() Option {
+	return func(c *config) error {
+		c.insecureDidResolution = true
+		return nil
+	}
+}
+
 // New constructs a UCAN 1.0 HTTP server that handles the five
 // signing-service capabilities:
 //
@@ -34,12 +47,23 @@ var log = logging.Logger("pkg/server")
 // The returned server implements http.Handler.
 //
 // Piri clients sign invocations as did:web:piri-N, so the server registers a
-// did:web resolver (HTTP did.json fetch, cached). Without this, the default
-// validator only accepts did:key issuers and rejects invocations with
-// "unsupported DID method: web". Returns an error if the resolver fails to
-// initialize.
-func New(id principal.Signer, signer types.OperationSigner) (*server.HTTPServer, error) {
-	httpResolver, err := didresolver.NewHTTPResolver(didresolver.InsecureResolution())
+// did:web resolver (HTTPS did.json fetch, cached; HTTP only with the insecure
+// dev flag). Without this, the default validator only accepts did:key issuers
+// and rejects invocations with "unsupported DID method: web". Returns an error
+// if the resolver fails to initialize.
+func New(id principal.Signer, signer types.OperationSigner, opts ...Option) (*server.HTTPServer, error) {
+	cfg := &config{}
+	for _, opt := range opts {
+		if err := opt(cfg); err != nil {
+			return nil, err
+		}
+	}
+	var httpResolverOpts []didresolver.Option
+	if cfg.insecureDidResolution {
+		httpResolverOpts = append(httpResolverOpts, didresolver.InsecureResolution())
+	}
+
+	httpResolver, err := didresolver.NewHTTPResolver(httpResolverOpts...)
 	if err != nil {
 		return nil, err
 	}
