@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -9,26 +10,23 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/go-libstoracha/capabilities/pdp/sign"
-	"github.com/fil-forge/go-ucanto/client"
-	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/invocation"
-	"github.com/fil-forge/go-ucanto/core/ipld"
-	"github.com/fil-forge/go-ucanto/core/message"
-	"github.com/fil-forge/go-ucanto/core/receipt"
-	"github.com/fil-forge/go-ucanto/core/result"
-	fdm "github.com/fil-forge/go-ucanto/core/result/failure/datamodel"
-	ucan_http "github.com/fil-forge/go-ucanto/transport/http"
-	"github.com/fil-forge/go-ucanto/ucan"
+	"github.com/fil-forge/libforge/commands/pdp/sign"
+	"github.com/fil-forge/ucantone/client"
+	"github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/errors"
+	"github.com/fil-forge/ucantone/execution"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/invocation"
+	"github.com/ipfs/go-cid"
 
 	"github.com/fil-forge/piri-signing-service/pkg/types"
 )
 
 // Client uses UCAN invocations to request a remote signing service to sign PDP operations.
 type Client struct {
-	Connection        client.Connection   // Connection to the service.
-	InvocationOptions []delegation.Option // Options added to every invocation.
+	ServiceDID        did.DID             // DID of the remote signing service.
+	HTTP              *client.HTTPClient  // ucantone HTTP client.
+	InvocationOptions []invocation.Option // options added to every invocation.
 }
 
 // Verify that Client implements types.SigningService at compile time
@@ -36,28 +34,28 @@ var _ types.SigningService = (*Client)(nil)
 
 type clientConfig struct {
 	httpClient        *http.Client
-	invocationOptions []delegation.Option
+	invocationOptions []invocation.Option
 }
 
 type Option func(*clientConfig)
 
 // WithHTTPClient configures a custom HTTP client.
-func WithHTTPClient(client *http.Client) Option {
-	return func(c *clientConfig) {
-		c.httpClient = client
+func WithHTTPClient(c *http.Client) Option {
+	return func(cfg *clientConfig) {
+		cfg.httpClient = c
 	}
 }
 
 // WithInvocationOptions configures invocation options that are sent with every
 // request.
-func WithInvocationOptions(opts ...delegation.Option) Option {
-	return func(c *clientConfig) {
-		c.invocationOptions = append(c.invocationOptions, opts...)
+func WithInvocationOptions(opts ...invocation.Option) Option {
+	return func(cfg *clientConfig) {
+		cfg.invocationOptions = append(cfg.invocationOptions, opts...)
 	}
 }
 
 // New creates a new client for the signing service.
-func New(serviceID ucan.Principal, serviceURL string, options ...Option) (*Client, error) {
+func New(serviceDID did.DID, serviceURL string, options ...Option) (*Client, error) {
 	cfg := clientConfig{}
 	for _, opt := range options {
 		opt(&cfg)
@@ -66,43 +64,47 @@ func New(serviceID ucan.Principal, serviceURL string, options ...Option) (*Clien
 	if err != nil {
 		return nil, fmt.Errorf("parsing signing service URL: %w", err)
 	}
-	channel := ucan_http.NewChannel(endpoint, ucan_http.WithClient(cfg.httpClient))
-	conn, err := client.NewConnection(serviceID, channel)
-	if err != nil {
-		return nil, fmt.Errorf("creating signing service connection: %w", err)
+	var httpOpts []client.HTTPOption
+	if cfg.httpClient != nil {
+		httpOpts = append(httpOpts, client.WithHTTPClient(cfg.httpClient))
 	}
-	return &Client{conn, cfg.invocationOptions}, nil
+	httpClient, err := client.NewHTTP(endpoint, httpOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("creating signing service HTTP client: %w", err)
+	}
+	return &Client{
+		ServiceDID:        serviceDID,
+		HTTP:              httpClient,
+		InvocationOptions: cfg.invocationOptions,
+	}, nil
 }
 
-// SignCreateDataSet signs a CreateDataSet operation via UCAN invocation
+// SignCreateDataSet signs a CreateDataSet operation via UCAN invocation.
 func (c *Client) SignCreateDataSet(
 	ctx context.Context,
 	issuer ucan.Signer,
 	dataSet *big.Int,
 	payee common.Address,
 	metadata []eip712.MetadataEntry,
-	options ...delegation.Option,
+	proofs []ucan.Delegation,
+	options ...invocation.Option,
 ) (*eip712.AuthSignature, error) {
-	var opts []delegation.Option
-	opts = append(append(opts, c.InvocationOptions...), options...)
-	inv, err := sign.DataSetCreate.Invoke(
-		issuer,
-		c.Connection.ID(),
-		c.Connection.ID().DID().String(),
-		sign.DataSetCreateCaveats{
-			DataSet:  dataSet,
-			Payee:    payee,
-			Metadata: fromEIP712MetadataEntries(metadata),
-		},
-		opts...,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetCreateAbility, err)
+	args := &sign.DataSetCreateArguments{
+		DataSet:  dataSet,
+		Payee:    payee.Bytes(),
+		Metadata: fromEIP712MetadataEntries(metadata),
 	}
-	return execInvocation(ctx, c.Connection, inv)
+	inv, err := sign.DataSetCreate.Invoke(issuer, c.ServiceDID, args, c.mergeOptionsWithProofs(options, proofs)...)
+	if err != nil {
+		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetCreate.Command, err)
+	}
+	return c.execAuthSignatureRequest(ctx, inv, execution.WithDelegations(proofs...))
 }
 
-// SignAddPieces signs an AddPieces operation via UCAN invocation
+// SignAddPieces signs an AddPieces operation via UCAN invocation. The
+// caller MUST supply a proofContainer that includes every blob/accept
+// invocation referenced by pieceProofs[].Proofs, plus their pdp/accept
+// receipts.
 func (c *Client) SignAddPieces(
 	ctx context.Context,
 	issuer ucan.Signer,
@@ -110,135 +112,130 @@ func (c *Client) SignAddPieces(
 	nonce *big.Int,
 	pieceData [][]byte,
 	metadata [][]eip712.MetadataEntry,
-	proofs [][]ipld.Link,
-	proofData [][]message.AgentMessage,
-	options ...delegation.Option,
+	pieceProofs []sign.PieceProofs,
+	proofContainer ucan.Container,
+	proofs []ucan.Delegation,
+	options ...invocation.Option,
 ) (*eip712.AuthSignature, error) {
-	metaModel := make([]sign.Metadata, 0, len(metadata))
+	meta := make([]sign.Metadata, 0, len(metadata))
 	for _, m := range metadata {
-		metaModel = append(metaModel, fromEIP712MetadataEntries(m))
+		meta = append(meta, fromEIP712MetadataEntries(m))
 	}
-
-	var opts []delegation.Option
-	opts = append(append(opts, c.InvocationOptions...), options...)
-	inv, err := sign.PiecesAdd.Invoke(
-		issuer,
-		c.Connection.ID(),
-		c.Connection.ID().DID().String(),
-		sign.PiecesAddCaveats{
-			DataSet:   dataSet,
-			Nonce:     nonce,
-			PieceData: pieceData,
-			Metadata:  metaModel,
-			Proofs:    proofs,
-		},
-		opts...,
-	)
+	args := &sign.PiecesAddArguments{
+		DataSet:   dataSet,
+		Nonce:     nonce,
+		PieceData: pieceData,
+		Metadata:  meta,
+		Proofs:    pieceProofs,
+	}
+	inv, err := sign.PiecesAdd.Invoke(issuer, c.ServiceDID, args, c.mergeOptionsWithProofs(options, proofs)...)
 	if err != nil {
-		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesAddAbility, err)
+		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesAdd.Command, err)
 	}
 
-	for _, pd := range proofData {
-		for _, msg := range pd {
-			for b, err := range msg.Blocks() {
-				if err != nil {
-					return nil, fmt.Errorf("iterating blocks in proof data %s: %w", msg.Root().Link(), err)
-				}
-				if err := inv.Attach(b); err != nil {
-					return nil, fmt.Errorf("attaching block %s: %w", b.Link(), err)
-				}
-			}
-		}
+	reqOpts := []execution.RequestOption{execution.WithDelegations(proofs...)}
+	if proofContainer != nil {
+		reqOpts = append(reqOpts,
+			execution.WithInvocations(proofContainer.Invocations()...),
+			execution.WithReceipts(proofContainer.Receipts()...),
+			execution.WithDelegations(proofContainer.Delegations()...),
+		)
 	}
-
-	return execInvocation(ctx, c.Connection, inv)
+	return c.execAuthSignatureRequest(ctx, inv, reqOpts...)
 }
 
-// SignSchedulePieceRemovals signs a SchedulePieceRemovals operation via UCAN invocation
+// SignSchedulePieceRemovals signs a SchedulePieceRemovals operation via UCAN invocation.
 func (c *Client) SignSchedulePieceRemovals(
 	ctx context.Context,
 	issuer ucan.Signer,
 	dataSet *big.Int,
 	pieceIds []*big.Int,
-	options ...delegation.Option,
+	proofs []ucan.Delegation,
+	options ...invocation.Option,
 ) (*eip712.AuthSignature, error) {
-	var opts []delegation.Option
-	opts = append(append(opts, c.InvocationOptions...), options...)
-	inv, err := sign.PiecesRemoveSchedule.Invoke(
-		issuer,
-		c.Connection.ID(),
-		c.Connection.ID().DID().String(),
-		sign.PiecesRemoveScheduleCaveats{
-			DataSet: dataSet,
-			Pieces:  pieceIds,
-		},
-		opts...,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesRemoveScheduleAbility, err)
+	args := &sign.PiecesRemoveScheduleArguments{
+		DataSet: dataSet,
+		Pieces:  pieceIds,
 	}
-	return execInvocation(ctx, c.Connection, inv)
+	inv, err := sign.PiecesRemoveSchedule.Invoke(issuer, c.ServiceDID, args, c.mergeOptionsWithProofs(options, proofs)...)
+	if err != nil {
+		return nil, fmt.Errorf("invoking %s: %w", sign.PiecesRemoveSchedule.Command, err)
+	}
+	return c.execAuthSignatureRequest(ctx, inv, execution.WithDelegations(proofs...))
 }
 
-// SignDeleteDataSet signs a DeleteDataSet operation via UCAN invocation
+// SignDeleteDataSet signs a DeleteDataSet operation via UCAN invocation.
 func (c *Client) SignDeleteDataSet(
 	ctx context.Context,
 	issuer ucan.Signer,
 	dataSet *big.Int,
-	options ...delegation.Option,
+	proofs []ucan.Delegation,
+	options ...invocation.Option,
 ) (*eip712.AuthSignature, error) {
-	var opts []delegation.Option
-	opts = append(append(opts, c.InvocationOptions...), options...)
-	inv, err := sign.DataSetDelete.Invoke(
-		issuer,
-		c.Connection.ID(),
-		c.Connection.ID().DID().String(),
-		sign.DataSetDeleteCaveats{
-			DataSet: dataSet,
-		},
-		opts...,
-	)
+	args := &sign.DataSetDeleteArguments{DataSet: dataSet}
+	inv, err := sign.DataSetDelete.Invoke(issuer, c.ServiceDID, args, c.mergeOptionsWithProofs(options, proofs)...)
 	if err != nil {
-		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetDeleteAbility, err)
+		return nil, fmt.Errorf("invoking %s: %w", sign.DataSetDelete.Command, err)
 	}
-	return execInvocation(ctx, c.Connection, inv)
+	return c.execAuthSignatureRequest(ctx, inv, execution.WithDelegations(proofs...))
 }
 
-func execInvocation(ctx context.Context, conn client.Connection, inv invocation.Invocation) (*eip712.AuthSignature, error) {
-	xres, err := client.Execute(ctx, []invocation.Invocation{inv}, conn)
+func (c *Client) mergeOptionsWithProofs(options []invocation.Option, proofs []ucan.Delegation) []invocation.Option {
+	all := make([]invocation.Option, 0, len(c.InvocationOptions)+len(options)+1)
+	all = append(all, c.InvocationOptions...)
+	all = append(all, options...)
+	if len(proofs) > 0 {
+		links := make([]cid.Cid, len(proofs))
+		for i, p := range proofs {
+			links[i] = p.Link()
+		}
+		all = append(all, invocation.WithProofs(links...))
+	}
+	return all
+}
+
+func (c *Client) execAuthSignatureRequest(ctx context.Context, inv ucan.Invocation, reqOpts ...execution.RequestOption) (*eip712.AuthSignature, error) {
+	req := execution.NewRequest(ctx, inv, reqOpts...)
+	resp, err := c.HTTP.Execute(req)
 	if err != nil {
-		return nil, fmt.Errorf("executing %s: %w", inv.Capabilities()[0].Can(), err)
+		return nil, fmt.Errorf("executing %s: %w", inv.Command(), err)
 	}
-	rcptLink, ok := xres.Get(inv.Link())
-	if !ok {
-		return nil, fmt.Errorf("missing receipt for invocation: %s", inv.Link())
+
+	rcpt := resp.Receipt()
+	out := rcpt.Out()
+	okBytes, errBytes := out.Unpack()
+	if !out.IsOK() {
+		// Try to decode as a named error; fall back to a generic message.
+		named := errors.Named(nil)
+		if e := tryDecodeNamedError(errBytes); e != nil {
+			named = e
+		}
+		if named != nil {
+			return nil, named
+		}
+		return nil, fmt.Errorf("%s failed: %s", inv.Command(), string(errBytes))
 	}
-	blocks, err := blockstore.NewBlockReader(blockstore.WithBlocksIterator(xres.Blocks()))
+
+	var sig sign.AuthSignature
+	if err := sig.UnmarshalCBOR(bytes.NewReader(okBytes)); err != nil {
+		return nil, fmt.Errorf("decoding signature receipt: %w", err)
+	}
+	out712, err := fromLibforgeAuthSig(sig)
 	if err != nil {
-		return nil, fmt.Errorf("reading agent message blocks: %w", err)
+		return nil, fmt.Errorf("converting signature: %w", err)
 	}
-	rcpt, err := receipt.NewAnyReceipt(rcptLink, blocks)
-	if err != nil {
-		return nil, fmt.Errorf("creating receipt: %w", err)
-	}
-	return result.MatchResultR2(
-		rcpt.Out(),
-		func(o ipld.Node) (*eip712.AuthSignature, error) {
-			sig, err := sign.AuthSignatureReader.Read(o)
-			if err != nil {
-				return nil, fmt.Errorf("reading signature: %w", err)
-			}
-			eipSig := eip712.AuthSignature(sig)
-			return &eipSig, nil
-		},
-		func(x ipld.Node) (*eip712.AuthSignature, error) {
-			signErr, err := sign.SignErrorReader.Read(x)
-			if err != nil {
-				return nil, fdm.Bind(x)
-			}
-			return nil, signErr
-		},
-	)
+	return out712, nil
+}
+
+// tryDecodeNamedError attempts to decode raw failure bytes as the ucantone
+// error datamodel; returns nil if the bytes don't match.
+func tryDecodeNamedError(b []byte) errors.Named {
+	// errors.New returns a value implementing the Named interface and
+	// MarshalCBOR-able as a tagged error model. For now we don't decode it
+	// back into a typed value — callers get the raw bytes via the fallback.
+	// Hook left in place for future structured failure parsing.
+	_ = b
+	return nil
 }
 
 func fromEIP712MetadataEntries(entries []eip712.MetadataEntry) sign.Metadata {
@@ -251,4 +248,25 @@ func fromEIP712MetadataEntries(entries []eip712.MetadataEntry) sign.Metadata {
 		meta.Values[e.Key] = e.Value
 	}
 	return meta
+}
+
+func fromLibforgeAuthSig(s sign.AuthSignature) (*eip712.AuthSignature, error) {
+	if len(s.R) != len(common.Hash{}) {
+		return nil, fmt.Errorf("invalid R length: got %d, want %d", len(s.R), len(common.Hash{}))
+	}
+	if len(s.S) != len(common.Hash{}) {
+		return nil, fmt.Errorf("invalid S length: got %d, want %d", len(s.S), len(common.Hash{}))
+	}
+	if len(s.Signer) != len(common.Address{}) {
+		return nil, fmt.Errorf("invalid Signer length: got %d, want %d", len(s.Signer), len(common.Address{}))
+	}
+	out := &eip712.AuthSignature{
+		Signature:  s.Signature,
+		V:          s.V,
+		SignedData: s.SignedData,
+	}
+	copy(out.R[:], s.R)
+	copy(out.S[:], s.S)
+	out.Signer.SetBytes(s.Signer)
+	return out, nil
 }

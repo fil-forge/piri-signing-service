@@ -1,112 +1,74 @@
 package handlers
 
 import (
-	"context"
-	"fmt"
-	"io"
 	"strings"
 	"time"
 
-	"github.com/fil-forge/go-libstoracha/capabilities/access"
-	"github.com/fil-forge/go-ucanto/core/dag/blockstore"
-	"github.com/fil-forge/go-ucanto/core/delegation"
-	"github.com/fil-forge/go-ucanto/core/invocation"
-	"github.com/fil-forge/go-ucanto/core/receipt/fx"
-	"github.com/fil-forge/go-ucanto/core/result"
-	"github.com/fil-forge/go-ucanto/core/result/failure"
-	"github.com/fil-forge/go-ucanto/principal"
-	"github.com/fil-forge/go-ucanto/server"
-	"github.com/fil-forge/go-ucanto/ucan"
+	"github.com/fil-forge/libforge/commands/access"
+	"github.com/fil-forge/ucantone/binding"
+	"github.com/fil-forge/ucantone/errors"
+	"github.com/fil-forge/ucantone/ucan"
+	"github.com/fil-forge/ucantone/ucan/container"
+	"github.com/fil-forge/ucantone/ucan/delegation"
+	"github.com/ipfs/go-cid"
 )
 
 // validity is the time a granted delegation is valid for.
-const validity = time.Hour
+const grantValidity = time.Hour
 
-func NewAccessGrantHandler(id principal.Signer) server.HandlerFunc[access.GrantCaveats, access.GrantOk, failure.IPLDBuilderFailure] {
-	return func(
-		ctx context.Context,
-		cap ucan.Capability[access.GrantCaveats],
-		inv invocation.Invocation,
-		ictx server.InvocationContext,
-	) (result.Result[access.GrantOk, failure.IPLDBuilderFailure], fx.Effects, error) {
-		nb := cap.Nb()
+// NewAccessGrantHandler returns a bindexec UCAN handler for /access/grant.
+// It issues a one-hour delegation per requested capability, returning the
+// CIDs in the receipt OK and attaching the signed delegations to the
+// response container as metadata.
+func NewAccessGrantHandler(id ucan.Signer) binding.HandlerFunc[*access.GrantArguments, *access.GrantOK] {
+	return func(req *binding.Request[*access.GrantArguments], res *binding.Response[*access.GrantOK]) error {
+		args := req.Task().Arguments()
+		inv := req.Invocation()
+
 		log.Infow(
-			"handling access request",
-			"ability", access.GrantAbility,
-			"issuer", inv.Issuer().DID(),
-			"capabilities", nb.Att,
-			"cause", nb.Cause,
+			"handling access grant",
+			"command", access.GrantCommand,
+			"issuer", inv.Issuer(),
+			"attenuations", args.Attenuations,
+			"cause", args.Cause,
 		)
-		if len(nb.Att) == 0 {
-			return result.Error[access.GrantOk, failure.IPLDBuilderFailure](access.NewMissingCapabilityError()), nil, nil
-		}
-		var cause invocation.Invocation
-		if cap.Nb().Cause != nil {
-			bs, err := blockstore.NewBlockReader(blockstore.WithBlocksIterator(inv.Blocks()))
-			if err != nil {
-				return nil, nil, fmt.Errorf("reading invocation blocks: %w", err)
-			}
-			cause, err = invocation.NewInvocationView(cap.Nb().Cause, bs)
-			if err != nil {
-				return nil, nil, fmt.Errorf("creating cause invocation: %w", err)
-			}
+
+		if len(args.Attenuations) == 0 {
+			return res.SetFailure(access.ErrMissingCapability)
 		}
 
-		delegations := map[string]delegation.Delegation{}
-		for _, cap := range cap.Nb().Att {
-			res, err := grantCapability(ctx, id, inv.Issuer(), cap.Can, cause)
+		audience := inv.Issuer()
+		exp := ucan.UnixTimestamp(time.Now().Add(grantValidity).Unix())
+
+		delegations := make([]ucan.Delegation, 0, len(args.Attenuations))
+		links := make([]cid.Cid, 0, len(args.Attenuations))
+		for _, ar := range args.Attenuations {
+			if !strings.HasPrefix(ar.Command.String(), "/pdp/sign/") {
+				return res.SetFailure(errors.New(access.UnknownAbilityErrorName,
+					"unknown ability: %s", ar.Command))
+			}
+
+			dlg, err := delegation.Delegate(
+				id,
+				audience,
+				id.DID(),
+				ar.Command,
+				delegation.WithExpiration(exp),
+			)
 			if err != nil {
-				return nil, nil, err
+				return res.SetFailure(err)
 			}
-			o, x := result.Unwrap(res)
-			if x != nil {
-				return result.Error[access.GrantOk](x), nil, nil
-			}
-			delegations[o.Link().String()] = o
+			log.Infow("delegated capability", "command", ar.Command, "audience", audience)
+			delegations = append(delegations, dlg)
+			links = append(links, dlg.Link())
 		}
 
-		res := access.GrantOk{
-			Delegations: access.DelegationsModel{Values: map[string][]byte{}},
-		}
-		for cid, dlg := range delegations {
-			r := dlg.Archive()
-			b, err := io.ReadAll(r)
-			if err != nil {
-				return nil, nil, fmt.Errorf("reading granted delegation archive: %w", err)
-			}
-			res.Delegations.Keys = append(res.Delegations.Keys, cid)
-			res.Delegations.Values[cid] = b
+		// Attach the signed delegation envelopes as response metadata so the
+		// caller can recover them from the receipt container.
+		if err := res.SetMetadata(container.New(container.WithDelegations(delegations...))); err != nil {
+			return err
 		}
 
-		return result.Ok[access.GrantOk, failure.IPLDBuilderFailure](res), nil, nil
+		return res.SetSuccess(&access.GrantOK{Delegations: links})
 	}
-}
-
-func grantCapability(
-	ctx context.Context,
-	id ucan.Signer,
-	audience ucan.Principal,
-	ability ucan.Ability,
-	cause invocation.Invocation,
-) (result.Result[delegation.Delegation, failure.IPLDBuilderFailure], error) {
-	if !strings.HasPrefix(ability, "pdp/sign") {
-		return result.Error[delegation.Delegation, failure.IPLDBuilderFailure](access.NewUnknownAbilityError(ability)), nil
-	}
-
-	// TODO: validate the issuer is a node known to be operating on the network
-
-	d, err := delegation.Delegate(
-		id,
-		audience,
-		[]ucan.Capability[ucan.NoCaveats]{
-			ucan.NewCapability(ability, id.DID().String(), ucan.NoCaveats{}),
-		},
-		delegation.WithExpiration(ucan.Now()+int(validity.Seconds())),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Infow("delegated capability", "ability", ability, "audience", audience.DID().String())
-	return result.Ok[delegation.Delegation, failure.IPLDBuilderFailure](d), nil
 }

@@ -9,11 +9,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/fil-forge/filecoin-services/go/eip712"
-	"github.com/fil-forge/go-libstoracha/testutil"
-	"github.com/fil-forge/piri-signing-service/pkg/signer"
-	"github.com/fil-forge/piri-signing-service/pkg/types"
+	"github.com/fil-forge/ucantone/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/fil-forge/piri-signing-service/pkg/signer"
+	"github.com/fil-forge/piri-signing-service/pkg/types"
 )
 
 func setupTestSigner(t *testing.T) (*Signer, *ecdsa.PrivateKey) {
@@ -38,13 +39,12 @@ func setupTestSigner(t *testing.T) (*Signer, *ecdsa.PrivateKey) {
 
 func TestSigner_ImplementsInterface(t *testing.T) {
 	signer, _ := setupTestSigner(t)
-
-	// Verify the signer implements types.SigningService
 	var _ types.SigningService = signer
 }
 
 func TestSigner_SignCreateDataSet(t *testing.T) {
-	signer, privateKey := setupTestSigner(t)
+	s, privateKey := setupTestSigner(t)
+	issuer := testutil.RandomSigner(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
@@ -53,22 +53,21 @@ func TestSigner_SignCreateDataSet(t *testing.T) {
 		{Key: "test-key", Value: "test-value"},
 	}
 
-	signature, err := signer.SignCreateDataSet(ctx, testutil.Alice, clientDataSetId, payee, metadata)
+	signature, err := s.SignCreateDataSet(ctx, issuer, clientDataSetId, payee, metadata, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, signature)
 
-	// Verify the signature has the correct signer address
 	expectedAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 	assert.Equal(t, expectedAddress, signature.Signer)
 
-	// Verify signature fields are populated
 	assert.NotEmpty(t, signature.R)
 	assert.NotEmpty(t, signature.S)
 	assert.NotZero(t, signature.V)
 }
 
 func TestSigner_SignAddPieces(t *testing.T) {
-	signer, privateKey := setupTestSigner(t)
+	s, privateKey := setupTestSigner(t)
+	issuer := testutil.RandomSigner(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
@@ -82,22 +81,21 @@ func TestSigner_SignAddPieces(t *testing.T) {
 		{{Key: "piece2-key", Value: "piece2-value"}},
 	}
 
-	signature, err := signer.SignAddPieces(ctx, testutil.Alice, clientDataSetId, firstAdded, pieceData, metadata, nil, nil)
+	signature, err := s.SignAddPieces(ctx, issuer, clientDataSetId, firstAdded, pieceData, metadata, nil, nil, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, signature)
 
-	// Verify the signature has the correct signer address
 	expectedAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 	assert.Equal(t, expectedAddress, signature.Signer)
 
-	// Verify signature fields are populated
 	assert.NotEmpty(t, signature.R)
 	assert.NotEmpty(t, signature.S)
 	assert.NotZero(t, signature.V)
 }
 
 func TestSigner_SignSchedulePieceRemovals(t *testing.T) {
-	signer, privateKey := setupTestSigner(t)
+	s, privateKey := setupTestSigner(t)
+	issuer := testutil.RandomSigner(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
@@ -107,42 +105,40 @@ func TestSigner_SignSchedulePieceRemovals(t *testing.T) {
 		big.NewInt(3),
 	}
 
-	signature, err := signer.SignSchedulePieceRemovals(ctx, testutil.Alice, clientDataSetId, pieceIds)
+	signature, err := s.SignSchedulePieceRemovals(ctx, issuer, clientDataSetId, pieceIds, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, signature)
 
-	// Verify the signature has the correct signer address
 	expectedAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 	assert.Equal(t, expectedAddress, signature.Signer)
 
-	// Verify signature fields are populated
 	assert.NotEmpty(t, signature.R)
 	assert.NotEmpty(t, signature.S)
 	assert.NotZero(t, signature.V)
 }
 
 func TestSigner_SignDeleteDataSet(t *testing.T) {
-	signer, privateKey := setupTestSigner(t)
+	s, privateKey := setupTestSigner(t)
+	issuer := testutil.RandomSigner(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
 
-	signature, err := signer.SignDeleteDataSet(ctx, testutil.Alice, clientDataSetId)
+	signature, err := s.SignDeleteDataSet(ctx, issuer, clientDataSetId, nil)
 	require.NoError(t, err)
 	assert.NotNil(t, signature)
 
-	// Verify the signature has the correct signer address
 	expectedAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 	assert.Equal(t, expectedAddress, signature.Signer)
 
-	// Verify signature fields are populated
 	assert.NotEmpty(t, signature.R)
 	assert.NotEmpty(t, signature.S)
 	assert.NotZero(t, signature.V)
 }
 
 func TestSigner_SignatureConsistency(t *testing.T) {
-	signer, _ := setupTestSigner(t)
+	s, _ := setupTestSigner(t)
+	issuer := testutil.RandomSigner(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
@@ -151,14 +147,12 @@ func TestSigner_SignatureConsistency(t *testing.T) {
 		{Key: "test-key", Value: "test-value"},
 	}
 
-	// Sign the same data twice
-	sig1, err := signer.SignCreateDataSet(ctx, testutil.Alice, clientDataSetId, payee, metadata)
+	sig1, err := s.SignCreateDataSet(ctx, issuer, clientDataSetId, payee, metadata, nil)
 	require.NoError(t, err)
 
-	sig2, err := signer.SignCreateDataSet(ctx, testutil.Alice, clientDataSetId, payee, metadata)
+	sig2, err := s.SignCreateDataSet(ctx, issuer, clientDataSetId, payee, metadata, nil)
 	require.NoError(t, err)
 
-	// Signatures should be identical for the same input
 	assert.Equal(t, sig1.R, sig2.R)
 	assert.Equal(t, sig1.S, sig2.S)
 	assert.Equal(t, sig1.V, sig2.V)

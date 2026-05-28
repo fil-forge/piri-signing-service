@@ -15,10 +15,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	ucantodid "github.com/fil-forge/go-ucanto/did"
-	"github.com/fil-forge/go-ucanto/principal"
-	ed25519 "github.com/fil-forge/go-ucanto/principal/ed25519/signer"
-	"github.com/fil-forge/go-ucanto/principal/signer"
+	ucantodid "github.com/fil-forge/ucantone/did"
+	"github.com/fil-forge/ucantone/principal"
+	"github.com/fil-forge/ucantone/principal/ed25519"
+	"github.com/fil-forge/ucantone/principal/signer"
 	"github.com/spf13/viper"
 )
 
@@ -46,6 +46,9 @@ type Config struct {
 	SigningKeyPath          string `mapstructure:"signing_key_path"`
 	SigningKeystorePath     string `mapstructure:"signing_keystore_path"`
 	SigningKeystorePassword string `mapstructure:"signing_keystore_password"`
+
+	// development server settings
+	InsecureDIDResolution bool `mapstructure:"insecure_did_resolution"`
 }
 
 // InitViper initializes Viper with defaults and binds it to Cobra flags
@@ -230,7 +233,9 @@ func SignerFromEd25519PEMFile(path string) (principal.Signer, error) {
 		return nil, fmt.Errorf("no PRIVATE KEY block found in PEM file")
 	}
 
-	return ed25519.FromRaw(*privateKey)
+	// ucantone's FromRaw wants the 32-byte seed; crypto/ed25519.PrivateKey is
+	// 64 bytes (seed || pub), so extract the seed before handing it over.
+	return ed25519.FromRaw(privateKey.Seed())
 }
 
 // LoadSigningKey loads a signing key from a string
