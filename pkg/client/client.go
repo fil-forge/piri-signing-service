@@ -82,7 +82,7 @@ func New(serviceDID did.DID, serviceURL string, options ...Option) (*Client, err
 // SignCreateDataSet signs a CreateDataSet operation via UCAN invocation.
 func (c *Client) SignCreateDataSet(
 	ctx context.Context,
-	issuer ucan.Signer,
+	issuer ucan.Issuer,
 	dataSet *big.Int,
 	payee common.Address,
 	metadata []eip712.MetadataEntry,
@@ -107,7 +107,7 @@ func (c *Client) SignCreateDataSet(
 // receipts.
 func (c *Client) SignAddPieces(
 	ctx context.Context,
-	issuer ucan.Signer,
+	issuer ucan.Issuer,
 	dataSet *big.Int,
 	nonce *big.Int,
 	pieceData [][]byte,
@@ -147,7 +147,7 @@ func (c *Client) SignAddPieces(
 // SignSchedulePieceRemovals signs a SchedulePieceRemovals operation via UCAN invocation.
 func (c *Client) SignSchedulePieceRemovals(
 	ctx context.Context,
-	issuer ucan.Signer,
+	issuer ucan.Issuer,
 	dataSet *big.Int,
 	pieceIds []*big.Int,
 	proofs []ucan.Delegation,
@@ -167,7 +167,7 @@ func (c *Client) SignSchedulePieceRemovals(
 // SignDeleteDataSet signs a DeleteDataSet operation via UCAN invocation.
 func (c *Client) SignDeleteDataSet(
 	ctx context.Context,
-	issuer ucan.Signer,
+	issuer ucan.Issuer,
 	dataSet *big.Int,
 	proofs []ucan.Delegation,
 	options ...invocation.Option,

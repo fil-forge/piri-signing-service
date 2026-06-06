@@ -15,8 +15,8 @@ import (
 )
 
 func TestAccessGrant_Success(t *testing.T) {
-	alice := testutil.RandomSigner(t)
-	service := testutil.RandomSigner(t)
+	alice := testutil.RandomIssuer(t)
+	service := testutil.RandomIssuer(t)
 
 	handler := handlers.NewAccessGrantHandler(service)
 
@@ -27,7 +27,7 @@ func TestAccessGrant_Success(t *testing.T) {
 
 	req, err := binding.NewRequest[*access.GrantArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse[*access.GrantOK](inv.Task().Link(), binding.WithSigner[*access.GrantOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*access.GrantOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -45,8 +45,8 @@ func TestAccessGrant_Success(t *testing.T) {
 }
 
 func TestAccessGrant_UnknownAbility(t *testing.T) {
-	alice := testutil.RandomSigner(t)
-	service := testutil.RandomSigner(t)
+	alice := testutil.RandomIssuer(t)
+	service := testutil.RandomIssuer(t)
 
 	handler := handlers.NewAccessGrantHandler(service)
 
@@ -57,7 +57,7 @@ func TestAccessGrant_UnknownAbility(t *testing.T) {
 
 	req, err := binding.NewRequest[*access.GrantArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse[*access.GrantOK](inv.Task().Link(), binding.WithSigner[*access.GrantOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*access.GrantOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))

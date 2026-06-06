@@ -27,7 +27,7 @@ func newInvalidResourceError(expected, actual string) error {
 
 // NewDataSetCreateHandler wraps the underlying eip712 signer in a
 // binding UCAN handler for /pdp/sign/dataset/create.
-func NewDataSetCreateHandler(id ucan.Signer, signer types.OperationSigner) binding.HandlerFunc[*sign.DataSetCreateArguments, *sign.DataSetCreateOK] {
+func NewDataSetCreateHandler(id ucan.Issuer, signer types.OperationSigner) binding.HandlerFunc[*sign.DataSetCreateArguments, *sign.DataSetCreateOK] {
 	return func(req *binding.Request[*sign.DataSetCreateArguments], res *binding.Response[*sign.DataSetCreateOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
@@ -55,7 +55,7 @@ func NewDataSetCreateHandler(id ucan.Signer, signer types.OperationSigner) bindi
 
 // NewDataSetDeleteHandler wraps the underlying eip712 signer in a
 // binding UCAN handler for /pdp/sign/dataset/delete.
-func NewDataSetDeleteHandler(id ucan.Signer, signer types.OperationSigner) binding.HandlerFunc[*sign.DataSetDeleteArguments, *sign.DataSetDeleteOK] {
+func NewDataSetDeleteHandler(id ucan.Issuer, signer types.OperationSigner) binding.HandlerFunc[*sign.DataSetDeleteArguments, *sign.DataSetDeleteOK] {
 	return func(req *binding.Request[*sign.DataSetDeleteArguments], res *binding.Response[*sign.DataSetDeleteOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
@@ -80,7 +80,7 @@ func NewDataSetDeleteHandler(id ucan.Signer, signer types.OperationSigner) bindi
 
 // NewPiecesAddHandler wraps the underlying eip712 signer in a
 // binding UCAN handler for /pdp/sign/pieces/add.
-func NewPiecesAddHandler(id ucan.Signer, signer types.OperationSigner) binding.HandlerFunc[*sign.PiecesAddArguments, *sign.PiecesAddOK] {
+func NewPiecesAddHandler(id ucan.Issuer, signer types.OperationSigner) binding.HandlerFunc[*sign.PiecesAddArguments, *sign.PiecesAddOK] {
 	return func(req *binding.Request[*sign.PiecesAddArguments], res *binding.Response[*sign.PiecesAddOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
@@ -114,7 +114,7 @@ func NewPiecesAddHandler(id ucan.Signer, signer types.OperationSigner) binding.H
 
 // NewPiecesRemoveScheduleHandler wraps the underlying eip712 signer in a
 // binding UCAN handler for /pdp/sign/pieces/remove/schedule.
-func NewPiecesRemoveScheduleHandler(id ucan.Signer, signer types.OperationSigner) binding.HandlerFunc[*sign.PiecesRemoveScheduleArguments, *sign.PiecesRemoveScheduleOK] {
+func NewPiecesRemoveScheduleHandler(id ucan.Issuer, signer types.OperationSigner) binding.HandlerFunc[*sign.PiecesRemoveScheduleArguments, *sign.PiecesRemoveScheduleOK] {
 	return func(req *binding.Request[*sign.PiecesRemoveScheduleArguments],
 		res *binding.Response[*sign.PiecesRemoveScheduleOK]) error {
 		args := req.Task().Arguments()

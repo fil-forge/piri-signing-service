@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/fil-forge/ucantone/principal"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/fil-forge/libforge/identity"
 	"github.com/fil-forge/piri-signing-service/pkg/config"
 	"github.com/fil-forge/piri-signing-service/pkg/handlers"
 	"github.com/fil-forge/piri-signing-service/pkg/server"
@@ -93,15 +93,15 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load service identity
-	var id principal.Signer
+	var id identity.Identity
 	switch {
 	case cfg.ServiceKeyFile != "":
-		id, err = config.LoadServiceIdentityFromFile(cfg.ServiceKeyFile, cfg.ServiceDID)
+		id, err = identity.NewFromPEMFileWithDID(cfg.ServiceKeyFile, cfg.ServiceDID)
 		if err != nil {
 			return fmt.Errorf("loading service identity from file: %w", err)
 		}
 	case cfg.ServiceKey != "":
-		id, err = config.LoadServiceIdentity(cfg.ServiceKey, cfg.ServiceDID)
+		id, err = identity.New(cfg.ServiceKey, cfg.ServiceDID)
 		if err != nil {
 			return fmt.Errorf("loading service identity: %w", err)
 		}
