@@ -51,7 +51,7 @@ func TestSignCreateDataSet_Success(t *testing.T) {
 
 	req, err := binding.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*sign.DataSetCreateOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.DataSetCreateOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -87,7 +87,7 @@ func TestSignCreateDataSet_InvalidResource(t *testing.T) {
 
 	req, err := binding.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*sign.DataSetCreateOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.DataSetCreateOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -107,7 +107,7 @@ func TestSignDeleteDataSet_Success(t *testing.T) {
 
 	req, err := binding.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*sign.DataSetDeleteOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.DataSetDeleteOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -133,7 +133,7 @@ func TestSignDeleteDataSet_InvalidResource(t *testing.T) {
 
 	req, err := binding.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*sign.DataSetDeleteOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.DataSetDeleteOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -164,7 +164,7 @@ func TestSignAddPieces_Success(t *testing.T) {
 
 	req, err := binding.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*sign.PiecesAddOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.PiecesAddOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -193,7 +193,7 @@ func TestSignAddPieces_InvalidResource(t *testing.T) {
 
 	req, err := binding.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*sign.PiecesAddOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.PiecesAddOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -216,7 +216,7 @@ func TestSignScheduleRemovePieces_Success(t *testing.T) {
 
 	req, err := binding.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*sign.PiecesRemoveScheduleOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.PiecesRemoveScheduleOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -245,7 +245,7 @@ func TestSignScheduleRemovePieces_InvalidResource(t *testing.T) {
 
 	req, err := binding.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*sign.PiecesRemoveScheduleOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.PiecesRemoveScheduleOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))

@@ -27,7 +27,7 @@ func TestAccessGrant_Success(t *testing.T) {
 
 	req, err := binding.NewRequest[*access.GrantArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*access.GrantOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*access.GrantOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
@@ -57,7 +57,7 @@ func TestAccessGrant_UnknownAbility(t *testing.T) {
 
 	req, err := binding.NewRequest[*access.GrantArguments](t.Context(), inv)
 	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithSigner[*access.GrantOK](service))
+	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*access.GrantOK](service))
 	require.NoError(t, err)
 
 	require.NoError(t, handler(req, res))
