@@ -56,7 +56,7 @@ func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (*s
 	}
 	webResolverOpts := []web.Option{}
 	if cfg.insecureDidResolution {
-		webResolverOpts = append(webResolverOpts, web.WithInsecure())
+		webResolverOpts = append(webResolverOpts, web.WithInsecure(true))
 	}
 	webResolver, err := web.NewResolver(webResolverOpts...)
 	if err != nil {
