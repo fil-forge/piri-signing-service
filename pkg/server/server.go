@@ -9,7 +9,7 @@ import (
 	"github.com/fil-forge/libforge/identity"
 	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/did/key"
-	"github.com/fil-forge/ucantone/did/utilresolvers"
+	"github.com/fil-forge/ucantone/did/resolver"
 	"github.com/fil-forge/ucantone/did/web"
 	"github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/validator"
@@ -70,11 +70,11 @@ func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (*s
 
 	srv := server.NewHTTP(id,
 		server.WithValidationOptions(
-			validator.WithDIDResolver(utilresolvers.ByMethod{
+			validator.WithDIDResolver(resolver.ByMethod{
 				"key": key.Resolver,
-				"web": utilresolvers.Chain{
-					utilresolvers.WellKnown{id.DID(): selfDoc},
-					utilresolvers.NewCached(webResolver, time.Hour*3),
+				"web": resolver.Chain{
+					resolver.WellKnown{id.DID(): selfDoc},
+					resolver.NewCached(webResolver, time.Hour*3),
 				},
 			}),
 		),
