@@ -72,7 +72,7 @@ func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (*s
 		server.WithValidationOptions(
 			validator.WithDIDResolver(resolver.ByMethod{
 				"key": key.Resolver,
-				"web": resolver.Chain{
+				"web": resolver.Tiered{
 					resolver.WellKnown{id.DID(): selfDoc},
 					resolver.NewCached(webResolver, time.Hour*3),
 				},
