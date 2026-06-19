@@ -44,7 +44,7 @@ func TestSigner_ImplementsInterface(t *testing.T) {
 
 func TestSigner_SignCreateDataSet(t *testing.T) {
 	s, privateKey := setupTestSigner(t)
-	issuer := testutil.RandomSigner(t)
+	issuer := testutil.RandomIssuer(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
@@ -67,7 +67,7 @@ func TestSigner_SignCreateDataSet(t *testing.T) {
 
 func TestSigner_SignAddPieces(t *testing.T) {
 	s, privateKey := setupTestSigner(t)
-	issuer := testutil.RandomSigner(t)
+	issuer := testutil.RandomIssuer(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
@@ -95,7 +95,7 @@ func TestSigner_SignAddPieces(t *testing.T) {
 
 func TestSigner_SignSchedulePieceRemovals(t *testing.T) {
 	s, privateKey := setupTestSigner(t)
-	issuer := testutil.RandomSigner(t)
+	issuer := testutil.RandomIssuer(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
@@ -119,7 +119,7 @@ func TestSigner_SignSchedulePieceRemovals(t *testing.T) {
 
 func TestSigner_SignDeleteDataSet(t *testing.T) {
 	s, privateKey := setupTestSigner(t)
-	issuer := testutil.RandomSigner(t)
+	issuer := testutil.RandomIssuer(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)
@@ -138,7 +138,7 @@ func TestSigner_SignDeleteDataSet(t *testing.T) {
 
 func TestSigner_SignatureConsistency(t *testing.T) {
 	s, _ := setupTestSigner(t)
-	issuer := testutil.RandomSigner(t)
+	issuer := testutil.RandomIssuer(t)
 	ctx := context.Background()
 
 	clientDataSetId := big.NewInt(12345)

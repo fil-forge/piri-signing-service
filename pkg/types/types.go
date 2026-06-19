@@ -56,7 +56,7 @@ type SigningService interface {
 	// SignCreateDataSet signs a CreateDataSet operation
 	SignCreateDataSet(
 		ctx context.Context,
-		issuer ucan.Signer,
+		issuer ucan.Issuer,
 		dataSet *big.Int,
 		payee common.Address,
 		metadata []eip712.MetadataEntry,
@@ -70,7 +70,7 @@ type SigningService interface {
 	// MUST be present in proofContainer.
 	SignAddPieces(
 		ctx context.Context,
-		issuer ucan.Signer,
+		issuer ucan.Issuer,
 		dataSet *big.Int,
 		nonce *big.Int,
 		pieceData [][]byte,
@@ -84,7 +84,7 @@ type SigningService interface {
 	// SignSchedulePieceRemovals signs a SchedulePieceRemovals operation
 	SignSchedulePieceRemovals(
 		ctx context.Context,
-		issuer ucan.Signer,
+		issuer ucan.Issuer,
 		dataSet *big.Int,
 		pieceIds []*big.Int,
 		proofs []ucan.Delegation,
@@ -94,7 +94,7 @@ type SigningService interface {
 	// SignDeleteDataSet signs a DeleteDataSet operation
 	SignDeleteDataSet(
 		ctx context.Context,
-		issuer ucan.Signer,
+		issuer ucan.Issuer,
 		dataSet *big.Int,
 		proofs []ucan.Delegation,
 		options ...invocation.Option,

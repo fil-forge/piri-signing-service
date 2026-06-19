@@ -12,7 +12,6 @@ import (
 	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/client"
 	uerrors "github.com/fil-forge/ucantone/errors"
-	"github.com/fil-forge/ucantone/principal"
 	"github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/testutil"
 	"github.com/fil-forge/ucantone/ucan"
@@ -23,8 +22,12 @@ import (
 // mustDelegate issues a delegation from `issuer` to `audience.DID()` for
 // `cap`, with the issuer's own DID as the subject. Bails the test if
 // delegation fails.
-func mustDelegate[Args, OK binding.CBORValue](t *testing.T, cap binding.Binding[Args, OK], issuer principal.Signer,
-	audience principal.Signer) ucan.Delegation {
+func mustDelegate[Args, OK binding.CBORValue](
+	t *testing.T,
+	cap binding.Binding[Args, OK],
+	issuer ucan.Issuer,
+	audience ucan.Principal,
+) ucan.Delegation {
 	t.Helper()
 	dlg, err := cap.Delegate(issuer, audience.DID(), issuer.DID())
 	require.NoError(t, err)
@@ -35,7 +38,7 @@ func mustDelegate[Args, OK binding.CBORValue](t *testing.T, cap binding.Binding[
 // HTTPServer as its transport. That way invocations go through the full
 // encode → decode → handle → encode response → decode cycle without
 // listening on a real port.
-func newClientBackedByServer(t *testing.T, srv *server.HTTPServer, service principal.Signer) *Client {
+func newClientBackedByServer(t *testing.T, srv *server.HTTPServer, service ucan.Issuer) *Client {
 	t.Helper()
 	endpoint, err := url.Parse("http://test")
 	require.NoError(t, err)
@@ -46,8 +49,8 @@ func newClientBackedByServer(t *testing.T, srv *server.HTTPServer, service princ
 
 func TestClient_SignCreateDataSet(t *testing.T) {
 	mock := mockLibforgeSignature()
-	service := testutil.RandomSigner(t)
-	alice := testutil.RandomSigner(t)
+	service := testutil.RandomIssuer(t)
+	alice := testutil.RandomIssuer(t)
 
 	srv := server.NewHTTP(service)
 	srv.Handle(sign.DataSetCreate.Command, binding.NewHandler(
@@ -79,8 +82,8 @@ func TestClient_SignCreateDataSet(t *testing.T) {
 
 func TestClient_SignAddPieces(t *testing.T) {
 	mock := mockLibforgeSignature()
-	service := testutil.RandomSigner(t)
-	alice := testutil.RandomSigner(t)
+	service := testutil.RandomIssuer(t)
+	alice := testutil.RandomIssuer(t)
 
 	srv := server.NewHTTP(service)
 	srv.Handle(sign.PiecesAdd.Command, binding.NewHandler(
@@ -118,8 +121,8 @@ func TestClient_SignAddPieces(t *testing.T) {
 
 func TestClient_SignSchedulePieceRemovals(t *testing.T) {
 	mock := mockLibforgeSignature()
-	service := testutil.RandomSigner(t)
-	alice := testutil.RandomSigner(t)
+	service := testutil.RandomIssuer(t)
+	alice := testutil.RandomIssuer(t)
 
 	srv := server.NewHTTP(service)
 	srv.Handle(sign.PiecesRemoveSchedule.Command, binding.NewHandler(
@@ -148,8 +151,8 @@ func TestClient_SignSchedulePieceRemovals(t *testing.T) {
 
 func TestClient_SignDeleteDataSet(t *testing.T) {
 	mock := mockLibforgeSignature()
-	service := testutil.RandomSigner(t)
-	alice := testutil.RandomSigner(t)
+	service := testutil.RandomIssuer(t)
+	alice := testutil.RandomIssuer(t)
 
 	srv := server.NewHTTP(service)
 	srv.Handle(sign.DataSetDelete.Command, binding.NewHandler(
@@ -170,8 +173,8 @@ func TestClient_SignDeleteDataSet(t *testing.T) {
 }
 
 func TestClient_ServerError(t *testing.T) {
-	service := testutil.RandomSigner(t)
-	alice := testutil.RandomSigner(t)
+	service := testutil.RandomIssuer(t)
+	alice := testutil.RandomIssuer(t)
 
 	srv := server.NewHTTP(service)
 	srv.Handle(sign.DataSetCreate.Command, binding.NewHandler(

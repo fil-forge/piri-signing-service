@@ -31,7 +31,7 @@ func New(signer *signer.Signer) *Signer {
 
 // SignCreateDataSet signs a CreateDataSet operation directly.
 func (s *Signer) SignCreateDataSet(_ context.Context,
-	_ ucan.Signer,
+	_ ucan.Issuer,
 	clientDataSetId *big.Int,
 	payee common.Address,
 	metadata []eip712.MetadataEntry,
@@ -42,7 +42,7 @@ func (s *Signer) SignCreateDataSet(_ context.Context,
 
 // SignAddPieces signs an AddPieces operation directly.
 func (s *Signer) SignAddPieces(_ context.Context,
-	_ ucan.Signer,
+	_ ucan.Issuer,
 	clientDataSetId *big.Int,
 	nonce *big.Int,
 	pieceData [][]byte,
@@ -56,7 +56,7 @@ func (s *Signer) SignAddPieces(_ context.Context,
 
 // SignSchedulePieceRemovals signs a SchedulePieceRemovals operation directly.
 func (s *Signer) SignSchedulePieceRemovals(_ context.Context,
-	_ ucan.Signer,
+	_ ucan.Issuer,
 	clientDataSetId *big.Int,
 	pieceIds []*big.Int,
 	_ []ucan.Delegation,
@@ -66,7 +66,7 @@ func (s *Signer) SignSchedulePieceRemovals(_ context.Context,
 
 // SignDeleteDataSet signs a DeleteDataSet operation directly.
 func (s *Signer) SignDeleteDataSet(_ context.Context,
-	_ ucan.Signer,
+	_ ucan.Issuer,
 	clientDataSetId *big.Int,
 	_ []ucan.Delegation,
 	_ ...invocation.Option) (*eip712.AuthSignature, error) {

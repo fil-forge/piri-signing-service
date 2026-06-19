@@ -20,7 +20,7 @@ const grantValidity = time.Hour
 // It issues a one-hour delegation per requested capability, returning the
 // CIDs in the receipt OK and attaching the signed delegations to the
 // response container as metadata.
-func NewAccessGrantHandler(id ucan.Signer) binding.HandlerFunc[*access.GrantArguments, *access.GrantOK] {
+func NewAccessGrantHandler(id ucan.Issuer) binding.HandlerFunc[*access.GrantArguments, *access.GrantOK] {
 	return func(req *binding.Request[*access.GrantArguments], res *binding.Response[*access.GrantOK]) error {
 		args := req.Task().Arguments()
 		inv := req.Invocation()
