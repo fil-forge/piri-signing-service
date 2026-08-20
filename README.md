@@ -115,6 +115,32 @@ A GitHub Actions workflow will deploy the service when a new release is created.
 
 Required environment variables **that are not secrets** are set in [deploy/.env.production.local.tpl](/deploy/.env.production.local.tpl). More specifically, `rpc_url` and `service_contract_address` are defined there (as `SIGNING_SERVICE_RPC_URL` and `SIGNING_SERVICE_SERVICE_CONTRACT_ADDRESS`, respectively).
 
+## Container images
+
+A push to `main` publishes to GHCR from the `Container` workflow, as
+`ghcr.io/fil-forge/piri-signing-service:main` plus a `sha-<short-sha>` tag,
+covering `linux/amd64` and `linux/arm64`. Release tags publish the same image
+under their semver version.
+
+## Deploying to Forge Central dev
+
+The `main` run also asks [infra-central][] to deploy what it just published. It
+dispatches a `bump-deployed-image` event carrying the manifest digest, and
+infra-central's [Bump deployed image][receiver] workflow opens a pull request
+pinning that digest in `terraform/envs/dev/apps/terraform.tfvars`, with
+auto-merge enabled. infra-central's [Check and deploy][deploy] workflow runs
+`tofu apply` on `dev/apps` on every push to its `main`, so merging that pull
+request is what deploys.
+
+The dispatch runs as the `fil-forge-bot` GitHub App and needs the
+`FORGE_BOT_APP_ID` variable and the `FORGE_BOT_PRIVATE_KEY` secret. Prod pins
+are promoted by hand. This is separate from the storoku deployment described
+above, which targets its own environments.
+
+[infra-central]: https://github.com/fil-forge/infra-central
+[receiver]: https://github.com/fil-forge/infra-central/blob/main/.github/workflows/bump-deployed-image.yml
+[deploy]: https://github.com/fil-forge/infra-central/blob/main/.github/workflows/check-and-deploy.yml
+
 ## API Endpoints
 
 ### Health Check
