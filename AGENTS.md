@@ -11,9 +11,8 @@ signatures from this service instead of holding the operator's private key.
 The signing key never leaves the service; the verifying contract is a
 FilecoinWarmStorageService deployment.
 
-Current security posture is Phase 1 "blind signing" on the legacy REST routes
-(no authentication — do not expose to the public internet), with UCAN 1.0
-authenticated invocations as the primary path going forward.
+Every signature is requested with an authenticated UCAN 1.0 invocation; the
+service has no unauthenticated signing route.
 
 ## Build / Test / Run
 
@@ -36,8 +35,8 @@ pkg/
   config/               # Viper config: flags > SIGNING_SERVICE_* env > signer.yaml (cwd) > defaults
   signer/               # Core EIP-712 signer: SignCreateDataSet, SignAddPieces,
                         #   SignSchedulePieceRemovals, SignDeleteDataSet, Recover* helpers
-  types/                # SigningService + OperationSigner interfaces, legacy request/response types
-  handlers/             # Legacy REST handlers (/sign/* and /healthcheck)
+  types/                # SigningService + OperationSigner interfaces, health response type
+  handlers/             # /healthcheck handler
   server/               # UCAN 1.0 HTTP server construction (ucantone), DID resolvers
     handlers/           # UCAN invocation handlers (access grant + the four sign commands)
   inprocess/            # In-process SigningService impl (no network, no auth checks) — for tests/dev
@@ -74,14 +73,6 @@ Deployment note: non-secret production env vars (`SIGNING_SERVICE_RPC_URL`,
 |--------|------|---------|
 | POST | `/` | UCAN invocation endpoint (primary; ucantone `server.HTTPServer` wrapped as an Echo handler) |
 | GET | `/healthcheck` | Health: signer address, chain ID |
-| POST | `/sign/create-dataset` | Legacy blind-sign CreateDataSet |
-| POST | `/sign/add-pieces` | Legacy blind-sign AddPieces |
-| POST | `/sign/schedule-piece-removals` | Legacy blind-sign SchedulePieceRemovals |
-| POST | `/sign/delete-dataset` | Legacy blind-sign DeleteDataSet |
-
-The `/sign/*` routes are marked TODO-remove once all piri nodes have moved to
-UCAN invocations — assume they may still be in use; don't remove or change
-their wire format without checking deployed piri nodes.
 
 ## UCAN Commands
 
@@ -111,7 +102,7 @@ only accepts did:key issuers.
 `pkg/types` defines two interfaces — keep them in sync when adding operations:
 
 - `OperationSigner` — the raw EIP-712 signing surface (`pkg/signer.Signer`
-  implements it; used by both legacy handlers and UCAN handlers)
+  implements it; used by the UCAN handlers)
 - `SigningService` — the higher-level authorized-signing surface. Implemented
   by `pkg/client.Client` (remote, UCAN invocations) and `pkg/inprocess.Signer`
   (direct, no auth — testing/dev). Piri consumes this interface, so changes

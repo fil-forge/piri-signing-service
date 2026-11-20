@@ -11,32 +11,6 @@ import (
 	"github.com/fil-forge/ucantone/ucan/invocation"
 )
 
-// CreateDataSetRequest represents the request payload for creating a dataset
-type CreateDataSetRequest struct {
-	ClientDataSetId string                 `json:"clientDataSetId"`
-	Payee           string                 `json:"payee"`
-	Metadata        []eip712.MetadataEntry `json:"metadata"`
-}
-
-// AddPiecesRequest represents the request payload for adding pieces
-type AddPiecesRequest struct {
-	ClientDataSetId string                   `json:"clientDataSetId"`
-	Nonce           string                   `json:"nonce"`
-	PieceData       []string                 `json:"pieceData"` // hex-encoded bytes
-	Metadata        [][]eip712.MetadataEntry `json:"metadata"`
-}
-
-// SchedulePieceRemovalsRequest represents the request payload for scheduling piece removals
-type SchedulePieceRemovalsRequest struct {
-	ClientDataSetId string   `json:"clientDataSetId"`
-	PieceIds        []string `json:"pieceIds"`
-}
-
-// DeleteDataSetRequest represents the request payload for deleting a dataset
-type DeleteDataSetRequest struct {
-	ClientDataSetId string `json:"clientDataSetId"`
-}
-
 // HealthResponse represents the health check response
 type HealthResponse struct {
 	Status string `json:"status"`

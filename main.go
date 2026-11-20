@@ -28,13 +28,8 @@ var rootCmd = &cobra.Command{
 	Use:   "signing-service",
 	Short: "HTTP service for signing PDP operations on behalf of Storacha",
 	Long: `A signing service that accepts PDP operation payloads via HTTP and returns
-EIP-712 signatures. This service wraps the signer.Signer and provides a REST API
-for piri nodes to request signatures without exposing Storacha's private key.
-
-Phase 1 (current): Blindly signs any request (no authentication)
-Phase 2 (future): UCAN authentication for registered operators
-Phase 3 (future): Session key integration
-Phase 4 (future): Replace cold wallet with session key`,
+EIP-712 signatures. Piri nodes request signatures with UCAN invocations, which
+the service authorizes before signing, so the private key never leaves it.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Initialize Viper with the command's flags
 		return config.Init()
@@ -154,7 +149,7 @@ func run(cmd *cobra.Command, args []string) error {
 	e.Use(middleware.Recover())
 	e.Logger.SetLevel(log.DEBUG)
 
-	// Create HTTP handlers
+	// Create the health check handler
 	handler := handlers.NewHandler(s)
 
 	// Create UCAN server (UCAN 1.0 via ucantone + libforge)
@@ -170,11 +165,6 @@ func run(cmd *cobra.Command, args []string) error {
 	// Setup routes — the ucantone server is an http.Handler, route POST / to it.
 	e.POST("/", echo.WrapHandler(ucanSrv))
 	e.GET("/healthcheck", handler.Health)
-	// TODO: remove /sign/* routes after all nodes transition to UCAN invocations
-	e.POST("/sign/create-dataset", handler.SignCreateDataSet)
-	e.POST("/sign/add-pieces", handler.SignAddPieces)
-	e.POST("/sign/schedule-piece-removals", handler.SignSchedulePieceRemovals)
-	e.POST("/sign/delete-dataset", handler.SignDeleteDataSet)
 
 	// Log startup info
 	cmd.Println("Signing service starting...")
