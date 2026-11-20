@@ -97,9 +97,13 @@ argument types defined in `github.com/fil-forge/libforge` (`commands/access`,
 | `/pdp/sign/pieces/add` | `pkg/server/handlers/sign.go` | |
 | `/pdp/sign/pieces/remove/schedule` | `pkg/server/handlers/sign.go` | |
 
-Sign handlers require the invocation subject to equal the service DID
-(i.e. the caller must hold a delegation from the service — self-signed
-invocations fail with an `InvalidResource` receipt error).
+`/access/grant` is invoked self-issued (subject and issuer are the caller,
+audience is the service), so it is served without subject checks. The four
+signing routes sit behind ucantone's `NotSelfSigned` and
+`OnlySubject(service DID)` middleware (`pkg/server/server.go`): the caller must
+hold a delegation from the service, and a rejection is a `SelfSignedInvocation`
+or `InvalidSubject` receipt error. The handlers make no authorization checks of
+their own; a new signing command goes in the same guarded list.
 
 Piri clients sign invocations as did:web identities, so the server registers a
 did:web resolver (HTTPS did.json fetch, 3-hour cache; the service's own DID is

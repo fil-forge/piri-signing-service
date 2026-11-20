@@ -7,11 +7,11 @@ import (
 	"github.com/fil-forge/libforge/commands/access"
 	"github.com/fil-forge/libforge/commands/pdp/sign"
 	"github.com/fil-forge/libforge/identity"
-	"github.com/fil-forge/ucantone/binding"
 	"github.com/fil-forge/ucantone/did/key"
 	"github.com/fil-forge/ucantone/did/resolver"
 	"github.com/fil-forge/ucantone/did/web"
 	"github.com/fil-forge/ucantone/server"
+	"github.com/fil-forge/ucantone/server/middleware"
 	"github.com/fil-forge/ucantone/validator"
 
 	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
@@ -80,11 +80,25 @@ func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (*s
 		),
 	)
 
-	srv.Handle(access.Grant.Command, binding.NewHandler(handlers.NewAccessGrantHandler(id)))
-	srv.Handle(sign.DataSetCreate.Command, binding.NewHandler(handlers.NewDataSetCreateHandler(id, signer)))
-	srv.Handle(sign.DataSetDelete.Command, binding.NewHandler(handlers.NewDataSetDeleteHandler(id, signer)))
-	srv.Handle(sign.PiecesAdd.Command, binding.NewHandler(handlers.NewPiecesAddHandler(id, signer)))
-	srv.Handle(sign.PiecesRemoveSchedule.Command, binding.NewHandler(handlers.NewPiecesRemoveScheduleHandler(id, signer)))
+	// /access/grant is how a node gets its first delegation, so it is invoked
+	// self-issued, over the caller's own DID, and is served as it is.
+	srv.HandleRoute(access.Grant.Route(handlers.NewAccessGrantHandler(id)))
+
+	// A signing command is served only over this service's DID and only to
+	// someone it delegated to, so every signature traces back to a grant.
+	signing := middleware.Apply(
+		[]server.Route{
+			sign.DataSetCreate.Route(handlers.NewDataSetCreateHandler(signer)),
+			sign.DataSetDelete.Route(handlers.NewDataSetDeleteHandler(signer)),
+			sign.PiecesAdd.Route(handlers.NewPiecesAddHandler(signer)),
+			sign.PiecesRemoveSchedule.Route(handlers.NewPiecesRemoveScheduleHandler(signer)),
+		},
+		middleware.NotSelfSigned(),
+		middleware.OnlySubject(id.DID()),
+	)
+	for _, route := range signing {
+		srv.HandleRoute(route)
+	}
 
 	return srv, nil
 }
