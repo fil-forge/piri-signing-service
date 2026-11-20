@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/fil-forge/libforge/commands/access"
 	"github.com/fil-forge/libforge/commands/pdp/sign"
@@ -74,7 +73,7 @@ func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (*s
 				"key": key.Resolver,
 				"web": resolver.Tiered{
 					resolver.WellKnown{id.DID(): selfDoc},
-					resolver.NewCached(webResolver, time.Hour*3),
+					webResolver,
 				},
 			}),
 		),

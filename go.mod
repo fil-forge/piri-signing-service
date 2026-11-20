@@ -6,7 +6,7 @@ require (
 	github.com/ethereum/go-ethereum v1.16.7
 	github.com/fil-forge/filecoin-services/go v0.0.0-20260507172456-36ebe4467390
 	github.com/fil-forge/libforge v0.0.0-20260807225550-3e6895b41be5
-	github.com/fil-forge/ucantone v0.0.0-20261120104359-4253712d41e4
+	github.com/fil-forge/ucantone v0.0.0-20261120160831-cf6c452a3cd7
 	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/go-log/v2 v2.9.2
 	github.com/labstack/echo/v4 v4.13.4
