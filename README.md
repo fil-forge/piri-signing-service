@@ -9,7 +9,7 @@ The Piri Signing Service acts as a secure bridge between Storacha's cold wallet 
 1. **Protects Storacha's private keys** - Keys never leave the signing service
 2. **Enables distributed operations** - Multiple piri nodes can request signatures without key access
 3. **Provides audit trails** - All signing operations can be logged and monitored
-4. **Supports future authentication** - Designed to evolve from blind signing to authenticated operations
+4. **Authenticates every request** - Signs only for UCAN invocations with a valid delegation chain
 
 ## Quick Start
 
@@ -149,74 +149,28 @@ above, which targets its own environments.
 curl http://localhost:7446/healthcheck
 ```
 
-### Sign Create Dataset
+### Signing
 
-```bash
-curl -X POST http://localhost:7446/sign/create-dataset \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clientDatasetId": "1",
-    "payeeAddress": "0xYourPayeeAddress",
-    "metadata": {
-      "key1": "value1",
-      "key2": "value2"
-    }
-  }'
-```
-
-### Sign Add Pieces
-
-```bash
-curl -X POST http://localhost:7446/sign/add-pieces \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clientDatasetId": "1",
-    "pieces": ["piece1", "piece2"]
-  }'
-```
-
-### Sign Schedule Piece Removals
-
-```bash
-curl -X POST http://localhost:7446/sign/schedule-piece-removals \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clientDatasetId": "1",
-    "pieces": ["piece1", "piece2"]
-  }'
-```
-
-### Sign Delete Dataset
-
-```bash
-curl -X POST http://localhost:7446/sign/delete-dataset \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clientDatasetId": "1"
-  }'
-```
+Signing requests are UCAN invocations sent to `POST /`. The service checks the
+invocation's delegation chain before it signs. `pkg/client` is the Go client:
+it requests a delegation with `/access/grant`, then invokes one of the four
+`/pdp/sign/*` commands.
 
 ## Security Roadmap
 
 The service is designed to evolve through multiple security phases:
 
-### Phase 1: Blind Signing (Current)
-- Signs any properly formatted request
-- No authentication required
-- Suitable for trusted, private networks only
-- **⚠️ WARNING: Do not expose to public internet**
-
-### Phase 2: UCAN Authentication (Planned)
-- Registered operators authenticate via UCAN tokens
+### Phase 1: UCAN Authentication (Current)
+- Registered operators authenticate with UCAN invocations
 - Each operator has specific permissions
 - Audit trail of who requested each signature
 
-### Phase 3: Session Keys (Future)
+### Phase 2: Session Keys (Future)
 - Temporary session keys for time-limited operations
 - Reduced exposure of primary signing key
 - Automatic key rotation
 
-### Phase 4: Hardware Security Module (Future)
+### Phase 3: Hardware Security Module (Future)
 - Cold wallet replaced with HSM or cloud KMS
 - Hardware-level key protection
 - Compliance with security standards
