@@ -1,12 +1,12 @@
 module github.com/fil-forge/piri-signing-service
 
-go 1.25.3
+go 1.27.0
 
 require (
 	github.com/ethereum/go-ethereum v1.16.7
 	github.com/fil-forge/filecoin-services/go v0.0.0-20260507172456-36ebe4467390
 	github.com/fil-forge/libforge v0.0.0-20260807225550-3e6895b41be5
-	github.com/fil-forge/ucantone v0.0.0-20260817170631-3a20cd59fabc
+	github.com/fil-forge/ucantone v0.0.0-20261120104359-4253712d41e4
 	github.com/ipfs/go-cid v0.6.2
 	github.com/ipfs/go-log/v2 v2.9.2
 	github.com/labstack/echo/v4 v4.13.4
@@ -20,7 +20,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20251001021608-1fe7b43fc4d6 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
-	github.com/alanshaw/dag-json-gen v0.0.8 // indirect
+	github.com/alanshaw/dag-json-gen v0.0.11 // indirect
 	github.com/bits-and-blooms/bitset v1.20.0 // indirect
 	github.com/consensys/gnark-crypto v0.18.0 // indirect
 	github.com/crate-crypto/go-eth-kzg v1.4.0 // indirect
@@ -32,7 +32,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
-	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/gobwas/glob v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
