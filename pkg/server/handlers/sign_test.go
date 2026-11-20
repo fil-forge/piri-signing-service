@@ -34,7 +34,7 @@ func TestSignCreateDataSet_Success(t *testing.T) {
 	service := testutil.RandomIssuer(t)
 
 	s := createTestSigner(t)
-	handler := handlers.NewDataSetCreateHandler(service, s)
+	handler := handlers.NewDataSetCreateHandler(s)
 
 	testPayee := common.HexToAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
 
@@ -64,42 +64,12 @@ func TestSignCreateDataSet_Success(t *testing.T) {
 	assertSignature(t, s.GetAddress(), got)
 }
 
-func TestSignCreateDataSet_InvalidResource(t *testing.T) {
-	alice := testutil.RandomIssuer(t)
-	service := testutil.RandomIssuer(t)
-
-	s := createTestSigner(t)
-	handler := handlers.NewDataSetCreateHandler(service, s)
-
-	testPayee := common.HexToAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb")
-
-	args := &sign.DataSetCreateArguments{
-		DataSet: big.NewInt(123),
-		Payee:   testPayee.Bytes(),
-		Metadata: sign.Metadata{
-			Keys:   []string{"name", "version"},
-			Values: map[string]string{"name": "test-dataset", "version": "1.0"},
-		},
-	}
-	// invoke with alice's DID as the subject (instead of the service DID)
-	inv, err := sign.DataSetCreate.Invoke(alice, alice.DID(), args)
-	require.NoError(t, err)
-
-	req, err := binding.NewRequest[*sign.DataSetCreateArguments](t.Context(), inv)
-	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.DataSetCreateOK](service))
-	require.NoError(t, err)
-
-	require.NoError(t, handler(req, res))
-	require.False(t, res.Receipt().Out().IsOK())
-}
-
 func TestSignDeleteDataSet_Success(t *testing.T) {
 	alice := testutil.RandomIssuer(t)
 	service := testutil.RandomIssuer(t)
 
 	s := createTestSigner(t)
-	handler := handlers.NewDataSetDeleteHandler(service, s)
+	handler := handlers.NewDataSetDeleteHandler(s)
 
 	args := &sign.DataSetDeleteArguments{DataSet: big.NewInt(123)}
 	inv, err := sign.DataSetDelete.Invoke(alice, service.DID(), args)
@@ -120,32 +90,12 @@ func TestSignDeleteDataSet_Success(t *testing.T) {
 	assertSignature(t, s.GetAddress(), got)
 }
 
-func TestSignDeleteDataSet_InvalidResource(t *testing.T) {
-	alice := testutil.RandomIssuer(t)
-	service := testutil.RandomIssuer(t)
-
-	s := createTestSigner(t)
-	handler := handlers.NewDataSetDeleteHandler(service, s)
-
-	args := &sign.DataSetDeleteArguments{DataSet: big.NewInt(123)}
-	inv, err := sign.DataSetDelete.Invoke(alice, alice.DID(), args)
-	require.NoError(t, err)
-
-	req, err := binding.NewRequest[*sign.DataSetDeleteArguments](t.Context(), inv)
-	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.DataSetDeleteOK](service))
-	require.NoError(t, err)
-
-	require.NoError(t, handler(req, res))
-	require.False(t, res.Receipt().Out().IsOK())
-}
-
 func TestSignAddPieces_Success(t *testing.T) {
 	alice := testutil.RandomIssuer(t)
 	service := testutil.RandomIssuer(t)
 
 	s := createTestSigner(t)
-	handler := handlers.NewPiecesAddHandler(service, s)
+	handler := handlers.NewPiecesAddHandler(s)
 
 	args := &sign.PiecesAddArguments{
 		DataSet: big.NewInt(123),
@@ -177,35 +127,12 @@ func TestSignAddPieces_Success(t *testing.T) {
 	assertSignature(t, s.GetAddress(), got)
 }
 
-func TestSignAddPieces_InvalidResource(t *testing.T) {
-	alice := testutil.RandomIssuer(t)
-	service := testutil.RandomIssuer(t)
-
-	s := createTestSigner(t)
-	handler := handlers.NewPiecesAddHandler(service, s)
-
-	args := &sign.PiecesAddArguments{
-		DataSet: big.NewInt(123),
-		Nonce:   big.NewInt(0),
-	}
-	inv, err := sign.PiecesAdd.Invoke(alice, alice.DID(), args)
-	require.NoError(t, err)
-
-	req, err := binding.NewRequest[*sign.PiecesAddArguments](t.Context(), inv)
-	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.PiecesAddOK](service))
-	require.NoError(t, err)
-
-	require.NoError(t, handler(req, res))
-	require.False(t, res.Receipt().Out().IsOK())
-}
-
 func TestSignScheduleRemovePieces_Success(t *testing.T) {
 	alice := testutil.RandomIssuer(t)
 	service := testutil.RandomIssuer(t)
 
 	s := createTestSigner(t)
-	handler := handlers.NewPiecesRemoveScheduleHandler(service, s)
+	handler := handlers.NewPiecesRemoveScheduleHandler(s)
 
 	args := &sign.PiecesRemoveScheduleArguments{
 		DataSet: big.NewInt(123),
@@ -227,29 +154,6 @@ func TestSignScheduleRemovePieces_Success(t *testing.T) {
 	var got sign.AuthSignature
 	require.NoError(t, got.UnmarshalCBOR(bytes.NewReader(okBytes)))
 	assertSignature(t, s.GetAddress(), got)
-}
-
-func TestSignScheduleRemovePieces_InvalidResource(t *testing.T) {
-	alice := testutil.RandomIssuer(t)
-	service := testutil.RandomIssuer(t)
-
-	s := createTestSigner(t)
-	handler := handlers.NewPiecesRemoveScheduleHandler(service, s)
-
-	args := &sign.PiecesRemoveScheduleArguments{
-		DataSet: big.NewInt(123),
-		Pieces:  []*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3)},
-	}
-	inv, err := sign.PiecesRemoveSchedule.Invoke(alice, alice.DID(), args)
-	require.NoError(t, err)
-
-	req, err := binding.NewRequest[*sign.PiecesRemoveScheduleArguments](t.Context(), inv)
-	require.NoError(t, err)
-	res, err := binding.NewResponse(inv.Task().Link(), binding.WithIssuer[*sign.PiecesRemoveScheduleOK](service))
-	require.NoError(t, err)
-
-	require.NoError(t, handler(req, res))
-	require.False(t, res.Receipt().Out().IsOK())
 }
 
 func assertSignature(t *testing.T, signerAddr common.Address, sig sign.AuthSignature) {
