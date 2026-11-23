@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/fil-forge/libforge/commands/access"
 	"github.com/fil-forge/libforge/commands/pdp/sign"
@@ -12,6 +13,7 @@ import (
 	"github.com/fil-forge/ucantone/did/web"
 	"github.com/fil-forge/ucantone/server"
 	"github.com/fil-forge/ucantone/validator"
+	"go.uber.org/zap"
 
 	"github.com/fil-forge/piri-signing-service/pkg/server/handlers"
 	"github.com/fil-forge/piri-signing-service/pkg/types"
@@ -19,6 +21,7 @@ import (
 
 type config struct {
 	insecureDidResolution bool
+	log                   *zap.SugaredLogger
 }
 
 type Option func(*config) error
@@ -39,15 +42,16 @@ func WithInsecureDIDResolution() Option {
 //   - /pdp/sign/pieces/add
 //   - /pdp/sign/pieces/remove/schedule
 //
-// The returned server implements http.Handler.
+// The returned handler logs every invocation it rejects at warn level, with
+// the reason; see rejectionLogger.
 //
 // Piri clients sign invocations as did:web:piri-N, so the server registers a
 // did:web resolver (HTTPS did.json fetch, cached; HTTP only with the insecure
 // dev flag). Without this, the default validator only accepts did:key issuers
 // and rejects invocations with "unsupported DID method: web". Returns an error
 // if the resolver fails to initialize.
-func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (*server.HTTPServer, error) {
-	cfg := &config{}
+func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (http.Handler, error) {
+	cfg := &config{log: &log.SugaredLogger}
 	for _, opt := range opts {
 		if err := opt(cfg); err != nil {
 			return nil, err
@@ -67,7 +71,9 @@ func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (*s
 		return nil, fmt.Errorf("creating DID document for service identity: %w", err)
 	}
 
+	rejections := &rejectionLogger{serviceDID: id.DID().String(), log: cfg.log}
 	srv := server.NewHTTP(id,
+		server.WithEventListener(rejections),
 		server.WithValidationOptions(
 			validator.WithDIDResolver(resolver.ByMethod{
 				"key": key.Resolver,
@@ -85,5 +91,5 @@ func New(id identity.Identity, signer types.OperationSigner, opts ...Option) (*s
 	srv.Handle(sign.PiecesAdd.Command, binding.NewHandler(handlers.NewPiecesAddHandler(id, signer)))
 	srv.Handle(sign.PiecesRemoveSchedule.Command, binding.NewHandler(handlers.NewPiecesRemoveScheduleHandler(id, signer)))
 
-	return srv, nil
+	return withRequestRecord(srv), nil
 }

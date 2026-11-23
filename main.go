@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
@@ -151,6 +152,14 @@ func run(cmd *cobra.Command, args []string) error {
 
 	// Create the health check handler
 	handler := handlers.NewHandler(s)
+
+	// go-log logs only errors by default. Let the UCAN server's warnings about
+	// rejected invocations through unless GOLOG_LOG_LEVEL sets levels.
+	if os.Getenv("GOLOG_LOG_LEVEL") == "" {
+		if err := logging.SetLogLevel("pkg/server", "warn"); err != nil {
+			return fmt.Errorf("setting log level: %w", err)
+		}
+	}
 
 	// Create UCAN server (UCAN 1.0 via ucantone + libforge)
 	var ucanSvrOpts []server.Option
