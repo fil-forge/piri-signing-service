@@ -97,6 +97,14 @@ did:web resolver (HTTPS did.json fetch, 3-hour cache; the service's own DID is
 resolved from a well-known in-memory document). Without this the validator
 only accepts did:key issuers.
 
+A rejected invocation still answers HTTP 200 with a failure receipt, so the
+server logs each one at warn level (`pkg/server/rejection_log.go`, message
+`rejected UCAN invocation`) with the command, issuer, subject, task CID and the
+receipt's error name and reason. An invocation addressed to another service
+gets no receipt and is logged as `InvalidAudience`. go-log only logs errors by
+default, so `main.go` sets `pkg/server` to warn unless `GOLOG_LOG_LEVEL` is
+set.
+
 ## Key Interfaces
 
 `pkg/types` defines two interfaces — keep them in sync when adding operations:
